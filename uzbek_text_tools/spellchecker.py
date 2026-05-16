@@ -66,8 +66,10 @@ class UzbekSpellChecker:
         w = word.lower()
         if w in self.vocabulary:
             return True
-        # Accept agglutinated forms whose stem is a known word
-        stem = strip_suffix(w)
+        # Accept agglutinated forms whose stem is a known word.
+        # Passing self.vocabulary activates the vocabulary guard inside
+        # strip_suffix, so only genuine dictionary roots are accepted.
+        stem = strip_suffix(w, vocabulary=self.vocabulary)
         if stem != w and stem in self.vocabulary:
             return True
         return False

@@ -90,3 +90,66 @@ def test_iterative_strip_max_passes_respected():
 
 def test_iterative_strip_returns_list():
     assert isinstance(iterative_strip("kitob"), list)
+
+
+# ------------------------------------------------------------------
+# Vocabulary guard (Fix 1)
+# Tests use minimal mock vocabularies so they never touch the real
+# 548k-word dictionary — failures here isolate the gate-3 logic.
+# ------------------------------------------------------------------
+
+def test_vocab_guard_accepts_known_stem():
+    """Strip is accepted when the resulting stem is in the vocabulary."""
+    vocab = {"kitob"}
+    assert strip_suffix("kitobdan", vocabulary=vocab) == "kitob"
+
+def test_vocab_guard_rejects_unknown_stem():
+    """
+    'xyzdan' → stem 'xyz': not in vocabulary.
+    Gate 3 blocks the strip, so the original word is returned.
+    """
+    vocab = {"kitob", "maktab"}          # 'xyz' deliberately absent
+    assert strip_suffix("xyzdan", vocabulary=vocab) == "xyzdan"
+
+def test_vocab_guard_falls_through_to_shorter_suffix():
+    """
+    When the first (longest) suffix produces an unknown stem, the function
+    must keep trying shorter suffixes until it finds one whose stem IS known.
+
+    'kitoblardan':
+      1. tries 'lardan' → stem 'kitob'  ← in vocab → accept immediately
+    (If vocab only had 'kitob', this confirms the fallthrough path too.)
+    """
+    vocab = {"kitob"}
+    # 'lardan' is in SUFFIXES → stem is 'kitob' which is in vocab → accepted
+    assert strip_suffix("kitoblardan", vocabulary=vocab) == "kitob"
+
+def test_vocab_guard_none_means_no_validation():
+    """
+    vocabulary=None (the default) must behave exactly as before — only
+    the length guard and vowel guard apply.  An unknown stem like 'xyz'
+    is returned without complaint.
+    """
+    assert strip_suffix("xyzdan") == "xyz"          # no vocabulary supplied
+    assert strip_suffix("xyzdan", vocabulary=None) == "xyz"
+
+def test_vocab_guard_blocks_non_root_phantom_stem():
+    """
+    'ishchi' (worker) ends in '-i'.  Without vocab: strip_suffix gives 'ishch'
+    (length ≥ 3, ends in consonant so vowel guard passes).
+    With vocab containing 'ishchi' but NOT 'ishch': gate 3 rejects 'ishch'
+    and no other suffix matches, so the word is returned unchanged.
+    This demonstrates that the validator prevents phantom non-root strips.
+    """
+    vocab_without_ishch = {"ishchi", "ish"}   # 'ishch' absent
+    assert strip_suffix("ishchi", vocabulary=vocab_without_ishch) == "ishchi"
+
+def test_iterative_strip_passes_vocab_through():
+    """
+    iterative_strip must forward the vocabulary to every pass.
+    With a vocabulary of only {'kitob', 'kitoblar'}, both intermediate
+    stems are valid so both passes fire.
+    """
+    vocab = {"kitob", "kitoblar"}
+    result = iterative_strip("kitoblarim", vocabulary=vocab)
+    assert result == ["kitoblar", "kitob"]

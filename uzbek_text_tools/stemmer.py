@@ -39,40 +39,67 @@ MIN_STEM_LEN = 3  # don't accept a stem shorter than this
 _VOWELS = frozenset("aeiouoʻ")
 
 
-def strip_suffix(word: str) -> str:
+def strip_suffix(
+    word: str,
+    vocabulary: "set[str] | frozenset[str] | None" = None,
+) -> str:
     """
     Remove the longest matching suffix from *word* and return the stem.
-    Returns *word* unchanged if no suffix matches or the resulting stem
-    would be shorter than MIN_STEM_LEN characters.
+    Returns *word* unchanged if no valid stem is found.
 
-    Special rule: the single-character suffix ``i`` is only stripped when
-    the resulting stem ends in a consonant (Uzbek morphology — the 3rd-person
-    possessive ``-i`` attaches to consonant-final roots only).
+    Validation gates (all must pass before a stem is accepted):
+
+    1. **Length guard** — stem must be ≥ ``MIN_STEM_LEN`` characters.
+    2. **Vowel guard** — the bare ``-i`` suffix is only stripped when the
+       resulting stem ends in a consonant (Uzbek morphology: the 3rd-person
+       possessive ``-i`` attaches to consonant-final roots only).
+    3. **Vocabulary guard** *(optional)* — when *vocabulary* is supplied, the
+       stem must be a known word.  This prevents phantom strips like
+       ``ishchi → ishch`` (``ishch`` is not a real root).  Pass ``None``
+       (default) to skip this check, e.g. in unit tests that run without a
+       loaded dictionary.
     """
     for suffix in _SORTED_SUFFIXES:
         if word.endswith(suffix):
             stem = word[: -len(suffix)]
+
+            # Gate 1 — minimum stem length
             if len(stem) < MIN_STEM_LEN:
                 continue
-            # Vowel guard for the bare -i suffix
+
+            # Gate 2 — vowel guard for bare -i
             if suffix == "i" and stem[-1] in _VOWELS:
                 continue
+
+            # Gate 3 — vocabulary validation (optional)
+            if vocabulary is not None and stem not in vocabulary:
+                continue
+
             return stem
     return word
 
 
-def iterative_strip(word: str, max_passes: int = 3) -> list[str]:
+def iterative_strip(
+    word: str,
+    max_passes: int = 3,
+    vocabulary: "set[str] | frozenset[str] | None" = None,
+) -> list[str]:
     """
     Strip suffixes up to *max_passes* times, returning every intermediate
     stem. Useful for deeply agglutinated forms like 'kitoblarimizgacha'.
 
-    Returns a list of candidates in order from longest-stripped to shortest:
-        ['kitoblarimizga', 'kitoblarimiz', 'kitoblar', 'kitob']
+    The optional *vocabulary* argument is forwarded to :func:`strip_suffix`
+    on every pass so that each intermediate stem is also validated.
+
+    Returns a list of candidates in order from longest-stripped to shortest::
+
+        iterative_strip("kitoblarim", vocabulary={"kitob", "kitoblar"})
+        # → ['kitoblar', 'kitob']
     """
     candidates: list[str] = []
     current = word
     for _ in range(max_passes):
-        stripped = strip_suffix(current)
+        stripped = strip_suffix(current, vocabulary=vocabulary)
         if stripped == current:
             break
         candidates.append(stripped)
