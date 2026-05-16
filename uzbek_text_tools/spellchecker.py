@@ -1,10 +1,7 @@
-import json
-import os
 import re
 
 from .stemmer import strip_suffix
-
-DATA_PATH = os.path.join(os.path.dirname(__file__), 'data', 'word_freq.json')
+from .data_loader import load_dictionary
 
 # Uzbek Latin word tokeniser — covers apostrophe letters ʻ ʼ and digraphs
 TOKEN_RE = re.compile(r"[a-zA-ZʻʼoOgG']+")
@@ -57,9 +54,8 @@ def weighted_distance(a: str, b: str) -> float:
 
 
 class UzbekSpellChecker:
-    def __init__(self, dictionary_path: str = DATA_PATH):
-        with open(dictionary_path, 'r', encoding='utf-8') as f:
-            self.word_freq: dict[str, int] = json.load(f)
+    def __init__(self):
+        self.word_freq: dict[str, int] = load_dictionary()
         self.vocabulary: set[str] = set(self.word_freq.keys())
 
     # ------------------------------------------------------------------

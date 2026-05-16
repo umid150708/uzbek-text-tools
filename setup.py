@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="uzbek-text-tools",
-    version="0.1.0",
+    version="0.2.0",
     author="umid150708",
     author_email="",
     description="Uzbek Cyrillic-Latin transliterator and spell checker",
@@ -11,7 +11,7 @@ setup(
     url="https://github.com/umid150708/uzbek-text-tools",
     packages=find_packages(exclude=["tests*", "notebooks*", "demo*", "scripts*"]),
     package_data={"uzbek_text_tools": ["data/*.json"]},
-    install_requires=["python-Levenshtein"],
+    install_requires=["huggingface_hub"],
     python_requires=">=3.8",
     classifiers=[
         "Programming Language :: Python :: 3",

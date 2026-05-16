@@ -2,6 +2,20 @@
 
 A Python library for Uzbek natural language processing. It converts Uzbek text between Cyrillic and Latin scripts and spell-checks Latin-script Uzbek text against a 513,000-word frequency dictionary built from Uzbek Wikipedia.
 
+## Changelog
+
+### v0.2.0
+- **Expanded dictionary:** ~548k words (added CC-100 web corpus on top of Wikipedia)
+- **Morphology-aware spell checking:** suffix stripper accepts agglutinated forms like `kitoblarimizdan` without false-flagging them
+- **Weighted edit distance:** common Uzbek letter confusions (x/h, i/y, u/o, b/p, d/t) have a reduced substitution cost of 0.5, so phonetically plausible suggestions rank higher
+- **Mixed-script input:** new `transliterate_mixed()` function handles strings that contain both Cyrillic and Latin words in a single pass
+- **HuggingFace Hub dictionary:** `word_freq.json` is now fetched from `Umid0708/uzbek-word-freq` on first use and cached locally — the wheel is under 100 KB instead of 2.8 MB
+
+### v0.1.0
+- Cyrillic↔Latin transliterator (33 Cyrillic letters + 4 Uzbek-specific: Ғ, Қ, Ҳ, Ў)
+- Levenshtein spell checker against a 513k-word Wikipedia frequency dictionary
+- `UzbekTextPipeline` — transliterate + spell-check in a single call
+
 ## Installation
 
 ```bash
@@ -90,15 +104,17 @@ print(result["spell_check"]["errors_found"])  # 1
 | Component | Detail |
 |---|---|
 | Transliterator | Character-map based; handles all 33 Cyrillic letters + 4 Uzbek-specific letters (`Ғ`, `Қ`, `Ҳ`, `Ў`); word-boundary regex for the `Е→Ye` rule |
-| Dictionary | 513,409 words extracted from Uzbek Wikipedia (675 article batches), frequency ≥ 3 |
-| Spell checker | Levenshtein distance ≤ 2, with length-window pre-filter (±2 chars) for speed; frequency as tiebreaker |
+| Mixed-script | `transliterate_mixed()` classifies each token by its Cyrillic character ratio (threshold 0.3) and routes it independently |
+| Dictionary | ~548k words from Uzbek Wikipedia + CC-100 web corpus, frequency ≥ 3; hosted on HuggingFace Hub, cached locally on first use |
+| Stemmer | Rule-based suffix stripper (35 suffixes, longest-first); vowel guard prevents false `-i` matches; up to 3 iterative passes |
+| Spell checker | Weighted edit distance ≤ 2 (Uzbek confusion pairs cost 0.5); length-window pre-filter ±2 chars; frequency tiebreaker |
 
 ## Known limitations
 
 These limitations define the honest scope of v0.1. They are not failures — they are the roadmap for v0.2.
 
-**1. Dictionary is based on Wikipedia.**
-The 513,000-word frequency dictionary was extracted from Uzbek Wikipedia. Wikipedia is formal, encyclopaedic text. Informal words, slang, SMS abbreviations, and everyday casual speech are underrepresented. A word like `salomat` will be recognised; a slang shortening like `slm` will not. Future versions will supplement the corpus with social-media and news text.
+**1. Dictionary is primarily formal text.** *(partially resolved in v0.2)*
+The frequency dictionary combines Uzbek Wikipedia and CC-100 (web-crawled text). Casual speech, SMS abbreviations, and regional slang are better covered than v0.1 but still underrepresented. A word like `salomat` is recognised; a slang shortening like `slm` is not.
 
 **2. Transliterator handles standard Uzbek only.**
 The Cyrillic→Latin mapping covers the official 1995 Uzbek Latin alphabet. Loanwords from Russian, English, or Arabic that use non-standard Cyrillic letters (`Щ`, `Ъ`, `Ы`, `Ь`) are mapped to their closest approximation but may not convert perfectly. Proper nouns transliterated into Cyrillic from other languages are especially likely to look odd after conversion.
@@ -106,18 +122,18 @@ The Cyrillic→Latin mapping covers the official 1995 Uzbek Latin alphabet. Loan
 **3. Spell checker is word-level only.**
 Each word is checked independently against the dictionary. The spell checker has no understanding of grammar, word order, or context. It will not catch correctly-spelled words used in the wrong place (e.g. `men` instead of `men` used as a different part of speech), and it will not suggest grammatically correct replacements — only lexically close ones.
 
-**4. Does not handle mixed-script text.**
-A sentence that contains both Cyrillic and Latin characters in the same string (e.g. `Toshkent шаҳри`) is not supported. The pipeline expects input to be entirely one script. Pass `script="cyrillic"` for fully Cyrillic input or `script="latin"` for fully Latin input. Mixed input will produce incorrect transliteration or missed spell-check coverage.
+**4. Mixed-script input.** *(resolved in v0.2)*
+Use `transliterate_mixed()` for strings that contain both Cyrillic and Latin tokens. The pipeline's `process()` method still expects a single script per call; pass `script="cyrillic"` or `script="latin"` accordingly.
 
 ### v0.2 roadmap
 
-| Limitation | Planned fix |
+| Limitation | Status |
 |---|---|
-| Wikipedia-only vocabulary | Add Telegram channels, news sites, and social-media corpora |
-| Loanword transliteration | Extend mapping table with known exception list |
-| Word-level spell checker | Add n-gram context model for grammar-aware suggestions |
-| Mixed-script input | Detect script per token and route each word independently |
-| Speed on long documents | Replace linear scan with a BK-tree index |
+| Wikipedia-only vocabulary | ✅ v0.2 — CC-100 corpus added (~548k words total) |
+| Mixed-script input | ✅ v0.2 — `transliterate_mixed()` added |
+| Loanword transliteration | 🔜 v0.3 — extend mapping table with known exception list |
+| Word-level spell checker | 🔜 v0.3 — n-gram context model for grammar-aware suggestions |
+| Speed on long documents | 🔜 v0.3 — replace linear scan with a BK-tree index |
 
 ## Contributing
 
