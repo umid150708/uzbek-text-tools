@@ -20,7 +20,6 @@ setup(
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Operating System :: OS Independent",
-        "Natural Language :: Uzbek",
         "Topic :: Text Processing :: Linguistic",
         "Intended Audience :: Developers",
         "Intended Audience :: Science/Research",
