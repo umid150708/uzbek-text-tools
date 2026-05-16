@@ -1,0 +1,207 @@
+# Uzbek informal / social-media / SMS vocabulary
+# Collected from Uzbek Telegram groups, Twitter/X, and common SMS patterns
+# One word per line. Lines starting with # are comments.
+# All words are Latin-script Uzbek.
+# These are added to the dictionary with frequency=1.
+
+# ── Greetings and farewells ────────────────────────────────────────────────
+salom
+slm
+assalom
+assalomu
+xayr
+hayr
+hoʻp
+hop
+okk
+oke
+okey
+otk
+
+# ── Common contractions and abbreviations ─────────────────────────────────
+tgm        # telegram
+tg
+insta      # instagram
+yt         # youtube
+fb         # facebook
+dm
+pm
+sm         # social media
+
+# ── Affirmatives / negatives ───────────────────────────────────────────────
+yoq
+yuq
+hha
+aha
+bor
+yap
+yopiq
+ayt
+ayta
+
+# ── Everyday casual verbs (first/second person informal) ──────────────────
+keldim
+ketdim
+bordim
+bildim
+qildim
+aytdim
+dedim
+ko'rdim
+yozdim
+o'qidim
+chiqdim
+o'tirdim
+o'yndim
+yedim
+ichdim
+sotdim
+oldim
+berdim
+topdim
+ko'tarildi
+tushdi
+keldi
+ketdi
+bordi
+qildi
+dedi
+ko'rdi
+yozdi
+o'qidi
+chiqdi
+
+# ── Common informal nouns ─────────────────────────────────────────────────
+do'stim
+do'sting
+ukam
+akam
+opam
+singlingiz
+akangiz
+ukangiz
+birodar
+birodari
+yigitcha
+qizcha
+bolakay
+
+# ── Emotional / expressive words ──────────────────────────────────────────
+voy
+vah
+uf
+uff
+bravo
+ofarin
+yashasin
+zoʻr
+zor
+ajoyib
+yaxshimisiz
+yaxshimisan
+nima
+nimaga
+qani
+qanaqa
+qanaday
+
+# ── Time / schedule informal ──────────────────────────────────────────────
+bugun
+ertaga
+kecha
+hozir
+ozgina
+biroz
+qachon
+doim
+hech
+tezroq
+sekin
+juda
+unchalik
+
+# ── SMS-style shortenings ─────────────────────────────────────────────────
+nmsz        # nima siz
+qvsz        # qanday siz
+rhmtlk      # rahmatlik (abbreviated)
+
+# ── Common Uzbek internet/chat words ──────────────────────────────────────
+like
+likeladim
+laikla
+repost
+repostladim
+post
+postladim
+komment
+kommentladim
+obuna
+obunachim
+kanalim
+guruhim
+adminim
+moderator
+xabar
+xabarladim
+chat
+chatim
+
+# ── Regional / colloquial variants ────────────────────────────────────────
+qoyil
+qoʻying
+qoʻyinglar
+ketinglar
+kelinglar
+boringlar
+ayting
+aytinglar
+bering
+beringlar
+oling
+olinglar
+qiling
+qilinglar
+boring
+kelinglar
+
+# ── Common adjectives in casual use ──────────────────────────────────────
+chiroyli
+chiroylimi
+kuchli
+kuchlimi
+kuchsiz
+katta
+kattami
+kichkina
+kichik
+yangi
+yangimi
+eski
+tez
+tezroq
+qimmat
+arzon
+bepul
+tekin
+
+# ── Uzbek number words (informal) ─────────────────────────────────────────
+bitta
+ikkita
+uchta
+to'rtta
+beshta
+oltita
+yettita
+sakkizta
+to'qqizta
+o'nta
+
+# ── Commonly misspelled words that should be accepted ─────────────────────
+hammasi
+hammangiz
+barchasi
+barchamiz
+hech
+hechkim
+hechnarsa
+hechqachon
