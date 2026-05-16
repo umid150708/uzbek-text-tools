@@ -59,6 +59,52 @@ def transliterate(text: str) -> str:
     return ''.join(result)
 
 
+# ---------------------------------------------------------------------------
+# Mixed-script support
+# ---------------------------------------------------------------------------
+
+def detect_token_script(token: str) -> str:
+    """
+    Return ``"cyrillic"`` if more than 30 % of the token's characters fall
+    in the Cyrillic Unicode block (U+0400–U+04FF), otherwise ``"latin"``.
+
+    The 0.3 threshold handles tokens that mix a Cyrillic root with Latin
+    punctuation or digits without misclassifying purely Latin tokens.
+    """
+    cyrillic_chars = sum(1 for c in token if 'Ѐ' <= c <= 'ӿ')
+    ratio = cyrillic_chars / max(len(token), 1)
+    return "cyrillic" if ratio > 0.3 else "latin"
+
+
+def transliterate_mixed(text: str) -> str:
+    """
+    Transliterate a string that contains *both* Cyrillic and Latin words.
+
+    Each token is classified independently by :func:`detect_token_script`.
+    Cyrillic tokens are converted to Latin via :func:`transliterate`;
+    Latin tokens (and whitespace / punctuation) are passed through unchanged.
+
+    Example::
+
+        >>> transliterate_mixed("Bu kitob очень яхши — maktabda o'qiladi")
+        "Bu kitob ochen yaxshi — maktabda o'qiladi"
+    """
+    # Split on whitespace / punctuation runs, keeping the separators so the
+    # output can be reassembled without losing any spacing or punctuation.
+    tokens = re.split(r'(\s+|[^\w]+)', text)
+    result = []
+    for token in tokens:
+        if not token or not token.strip():
+            # Whitespace or empty segment — pass through as-is
+            result.append(token)
+            continue
+        if detect_token_script(token) == "cyrillic":
+            result.append(transliterate(token))
+        else:
+            result.append(token)
+    return "".join(result)
+
+
 class Transliterator:
     """Object-oriented wrapper around the module-level transliterate function."""
 

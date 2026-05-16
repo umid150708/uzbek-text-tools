@@ -1,4 +1,7 @@
-from .transliterator import Transliterator, transliterate
+from .transliterator import (
+    Transliterator, transliterate,
+    detect_token_script, transliterate_mixed,
+)
 from .spellchecker import UzbekSpellChecker, get_checker
 from .pipeline import UzbekTextPipeline
 
@@ -8,6 +11,7 @@ Pipeline = UzbekTextPipeline
 
 __all__ = [
     "Transliterator", "transliterate",
+    "detect_token_script", "transliterate_mixed",
     "UzbekSpellChecker", "SpellChecker", "get_checker",
     "UzbekTextPipeline", "Pipeline",
 ]
