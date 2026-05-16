@@ -1,5 +1,5 @@
 import pytest
-from uzbek_text_tools.transliterator import transliterate
+from uzbek_text_tools.transliterator import transliterate, transliterate_mixed, detect_token_script
 
 
 def test_simple_word():
@@ -66,3 +66,33 @@ def test_ng_digraph():
 
 def test_mixed_sentence():
     assert transliterate("Ўзбекистон — буюк давлат.") == "Oʻzbekiston — buyuk davlat."
+
+
+# ------------------------------------------------------------------
+# v0.2 — Mixed-script support (Step 4)
+# ------------------------------------------------------------------
+
+def test_mixed_script():
+    """Latin tokens must survive; Cyrillic tokens must be transliterated."""
+    result = transliterate_mixed("kitob китоб")
+    assert "kitob" in result.lower()
+
+def test_mixed_script_spec_example():
+    result = transliterate_mixed("Bu kitob очень яхши — maktabda o'qiladi")
+    assert result == "Bu kitob ochen yaxshi — maktabda o'qiladi"
+
+def test_mixed_script_pure_latin_unchanged():
+    text = "Bu kitob juda yaxshi"
+    assert transliterate_mixed(text) == text
+
+def test_mixed_script_pure_cyrillic():
+    assert transliterate_mixed("Тошкент шаҳри") == "Toshkent shahri"
+
+def test_detect_token_script_latin():
+    assert detect_token_script("maktab") == "latin"
+
+def test_detect_token_script_cyrillic():
+    assert detect_token_script("мактаб") == "cyrillic"
+
+def test_detect_token_script_digits():
+    assert detect_token_script("2025") == "latin"

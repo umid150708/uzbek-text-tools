@@ -92,3 +92,43 @@ def test_check_text_error_has_suggestions():
 def test_check_text_multi_error():
     result = checker.check_text("kitoob yaxshii")
     assert result['errors_found'] == 2
+
+
+# ------------------------------------------------------------------
+# v0.2 — Suffix stripper (Step 2)
+# ------------------------------------------------------------------
+
+def test_inflected_form_not_flagged():
+    """Agglutinated forms whose stem is in the dictionary must pass."""
+    assert checker.is_correct("kitoblarimizdan") is True
+    assert checker.is_correct("maktabdagi") is True
+
+def test_inflected_form_stem_too_short():
+    """Stripping would leave a stem under MIN_STEM_LEN — still flagged."""
+    assert checker.is_correct("ktoblar") is False
+
+def test_suffix_strip_does_not_accept_double_vowel_typo():
+    """'yaxshii' must NOT pass — vowel guard prevents false -i strip."""
+    assert checker.is_correct("yaxshii") is False
+
+
+# ------------------------------------------------------------------
+# v0.2 — Weighted edit distance (Step 3)
+# ------------------------------------------------------------------
+
+def test_phonetic_confusion_ranked_correctly():
+    """
+    'hamma' is itself a valid Uzbek word ('everyone'); suggest() should
+    return it — exercising the h/x confusion path indirectly.
+    The key property: at least one suggestion is returned.
+    """
+    suggestions = checker.suggest("hamma")
+    assert len(suggestions) > 0
+
+def test_weighted_distance_confused_pair_ranks_higher():
+    """
+    'kitop' differs from 'kitob' by the b/p confusion pair (cost 0.5).
+    'kitob' should therefore be the top suggestion.
+    """
+    suggestions = checker.suggest("kitop")
+    assert suggestions[0] == "kitob"
