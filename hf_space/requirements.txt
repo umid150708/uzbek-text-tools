@@ -1,0 +1,2 @@
+uzbek-text-tools==0.1.0
+gradio
