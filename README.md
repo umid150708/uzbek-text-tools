@@ -95,10 +95,29 @@ print(result["spell_check"]["errors_found"])  # 1
 
 ## Known limitations
 
-- **Formal vocabulary only.** The dictionary comes from Wikipedia — everyday slang, SMS language, and casual speech may be flagged as errors even when correct.
-- **Latin script only for spell-checking.** Run Cyrillic text through the transliterator first (or use the `Pipeline`).
-- **No morphological analysis.** Uzbek is an agglutinative language; word forms like `kitoblar` (books) and `kitoblarni` (books, accusative) are treated as independent entries. Rare inflected forms may not be in the dictionary.
-- **Speed.** Checking a long document takes a few seconds because each unknown word is compared against up to ~50,000 length-similar candidates. A BK-tree index is planned for v0.2.
+These limitations define the honest scope of v0.1. They are not failures — they are the roadmap for v0.2.
+
+**1. Dictionary is based on Wikipedia.**
+The 513,000-word frequency dictionary was extracted from Uzbek Wikipedia. Wikipedia is formal, encyclopaedic text. Informal words, slang, SMS abbreviations, and everyday casual speech are underrepresented. A word like `salomat` will be recognised; a slang shortening like `slm` will not. Future versions will supplement the corpus with social-media and news text.
+
+**2. Transliterator handles standard Uzbek only.**
+The Cyrillic→Latin mapping covers the official 1995 Uzbek Latin alphabet. Loanwords from Russian, English, or Arabic that use non-standard Cyrillic letters (`Щ`, `Ъ`, `Ы`, `Ь`) are mapped to their closest approximation but may not convert perfectly. Proper nouns transliterated into Cyrillic from other languages are especially likely to look odd after conversion.
+
+**3. Spell checker is word-level only.**
+Each word is checked independently against the dictionary. The spell checker has no understanding of grammar, word order, or context. It will not catch correctly-spelled words used in the wrong place (e.g. `men` instead of `men` used as a different part of speech), and it will not suggest grammatically correct replacements — only lexically close ones.
+
+**4. Does not handle mixed-script text.**
+A sentence that contains both Cyrillic and Latin characters in the same string (e.g. `Toshkent шаҳри`) is not supported. The pipeline expects input to be entirely one script. Pass `script="cyrillic"` for fully Cyrillic input or `script="latin"` for fully Latin input. Mixed input will produce incorrect transliteration or missed spell-check coverage.
+
+### v0.2 roadmap
+
+| Limitation | Planned fix |
+|---|---|
+| Wikipedia-only vocabulary | Add Telegram channels, news sites, and social-media corpora |
+| Loanword transliteration | Extend mapping table with known exception list |
+| Word-level spell checker | Add n-gram context model for grammar-aware suggestions |
+| Mixed-script input | Detect script per token and route each word independently |
+| Speed on long documents | Replace linear scan with a BK-tree index |
 
 ## Contributing
 
