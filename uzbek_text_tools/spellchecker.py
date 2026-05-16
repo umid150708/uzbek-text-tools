@@ -4,6 +4,8 @@ import re
 
 from Levenshtein import distance as lev_distance
 
+from .stemmer import strip_suffix
+
 DATA_PATH = os.path.join(os.path.dirname(__file__), 'data', 'word_freq.json')
 
 # Uzbek Latin word tokeniser — covers apostrophe letters ʻ ʼ and digraphs
@@ -21,7 +23,14 @@ class UzbekSpellChecker:
     # ------------------------------------------------------------------
 
     def is_correct(self, word: str) -> bool:
-        return word.lower() in self.vocabulary
+        w = word.lower()
+        if w in self.vocabulary:
+            return True
+        # Accept agglutinated forms whose stem is a known word
+        stem = strip_suffix(w)
+        if stem != w and stem in self.vocabulary:
+            return True
+        return False
 
     def suggest(self, word: str, top_n: int = 3) -> list[str]:
         word = word.lower()
