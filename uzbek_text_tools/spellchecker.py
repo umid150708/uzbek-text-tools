@@ -2,14 +2,58 @@ import json
 import os
 import re
 
-from Levenshtein import distance as lev_distance
-
 from .stemmer import strip_suffix
 
 DATA_PATH = os.path.join(os.path.dirname(__file__), 'data', 'word_freq.json')
 
 # Uzbek Latin word tokeniser — covers apostrophe letters ʻ ʼ and digraphs
 TOKEN_RE = re.compile(r"[a-zA-ZʻʼoOgG']+")
+
+# ---------------------------------------------------------------------------
+# Weighted edit distance
+# ---------------------------------------------------------------------------
+# Letter pairs that Uzbek writers frequently confuse get a substitution cost
+# of 0.5 instead of 1.0, so the affected candidates rank closer to the input.
+UZBEK_CONFUSIONS: dict[tuple[str, str], float] = {
+    # x / h  — both represent similar fricative sounds in many Uzbek dialects
+    ("x", "h"): 0.5, ("h", "x"): 0.5,
+    # i / y  — short-vowel / semivowel alternation common in informal writing
+    ("i", "y"): 0.5, ("y", "i"): 0.5,
+    # u / o  — rounded back vowels, often interchanged in fast speech
+    ("u", "o"): 0.5, ("o", "u"): 0.5,
+    # b / p  — voiced/unvoiced stop, devoiced at syllable end
+    ("b", "p"): 0.5, ("p", "b"): 0.5,
+    # d / t  — voiced/unvoiced stop, same devoicing pattern
+    ("d", "t"): 0.5, ("t", "d"): 0.5,
+}
+
+
+def weighted_distance(a: str, b: str) -> float:
+    """
+    Levenshtein distance with reduced substitution cost for known Uzbek
+    letter confusions (see UZBEK_CONFUSIONS).  Insertions and deletions
+    still cost 1.0.
+    """
+    m, n = len(a), len(b)
+    # dp[i][j] = min cost to turn a[:i] into b[:j]
+    dp = [[0.0] * (n + 1) for _ in range(m + 1)]
+    for i in range(m + 1):
+        dp[i][0] = float(i)
+    for j in range(n + 1):
+        dp[0][j] = float(j)
+
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if a[i - 1] == b[j - 1]:
+                cost = 0.0
+            else:
+                cost = UZBEK_CONFUSIONS.get((a[i - 1], b[j - 1]), 1.0)
+            dp[i][j] = min(
+                dp[i - 1][j] + 1.0,        # deletion
+                dp[i][j - 1] + 1.0,        # insertion
+                dp[i - 1][j - 1] + cost,   # substitution
+            )
+    return dp[m][n]
 
 
 class UzbekSpellChecker:
@@ -46,7 +90,7 @@ class UzbekSpellChecker:
 
         scored = []
         for candidate in candidates:
-            dist = lev_distance(word, candidate)
+            dist = weighted_distance(word, candidate)
             if dist <= 2:
                 freq = self.word_freq.get(candidate, 1)
                 scored.append((candidate, dist, freq))
