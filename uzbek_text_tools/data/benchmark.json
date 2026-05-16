@@ -1,0 +1,1102 @@
+[
+  {
+    "input": "durkum",
+    "expected": "turkum",
+    "type": "phonetic"
+  },
+  {
+    "input": "pilan",
+    "expected": "bilan",
+    "type": "phonetic"
+  },
+  {
+    "input": "iilda",
+    "expected": "yilda",
+    "type": "phonetic"
+  },
+  {
+    "input": "ochun",
+    "expected": "uchun",
+    "type": "phonetic"
+  },
+  {
+    "input": "manpalar",
+    "expected": "manbalar",
+    "type": "phonetic"
+  },
+  {
+    "input": "juylashgan",
+    "expected": "joylashgan",
+    "type": "phonetic"
+  },
+  {
+    "input": "domonidan",
+    "expected": "tomonidan",
+    "type": "phonetic"
+  },
+  {
+    "input": "pirinchi",
+    "expected": "birinchi",
+    "type": "phonetic"
+  },
+  {
+    "input": "bunktlari",
+    "expected": "punktlari",
+    "type": "phonetic"
+  },
+  {
+    "input": "qyladi",
+    "expected": "qiladi",
+    "type": "phonetic"
+  },
+  {
+    "input": "ioki",
+    "expected": "yoki",
+    "type": "phonetic"
+  },
+  {
+    "input": "alyfbo",
+    "expected": "alifbo",
+    "type": "phonetic"
+  },
+  {
+    "input": "iangi",
+    "expected": "yangi",
+    "type": "phonetic"
+  },
+  {
+    "input": "oshbu",
+    "expected": "ushbu",
+    "type": "phonetic"
+  },
+  {
+    "input": "dashkil",
+    "expected": "tashkil",
+    "type": "phonetic"
+  },
+  {
+    "input": "xavolalar",
+    "expected": "havolalar",
+    "type": "phonetic"
+  },
+  {
+    "input": "tavlat",
+    "expected": "davlat",
+    "type": "phonetic"
+  },
+  {
+    "input": "poshqa",
+    "expected": "boshqa",
+    "type": "phonetic"
+  },
+  {
+    "input": "kyradi",
+    "expected": "kiradi",
+    "type": "phonetic"
+  },
+  {
+    "input": "momkin",
+    "expected": "mumkin",
+    "type": "phonetic"
+  },
+  {
+    "input": "darkibiga",
+    "expected": "tarkibiga",
+    "type": "phonetic"
+  },
+  {
+    "input": "qyshloq",
+    "expected": "qishloq",
+    "type": "phonetic"
+  },
+  {
+    "input": "iilgi",
+    "expected": "yilgi",
+    "type": "phonetic"
+  },
+  {
+    "input": "maidoni",
+    "expected": "maydoni",
+    "type": "phonetic"
+  },
+  {
+    "input": "mylliy",
+    "expected": "milliy",
+    "type": "phonetic"
+  },
+  {
+    "input": "kyshi",
+    "expected": "kishi",
+    "type": "phonetic"
+  },
+  {
+    "input": "ystiqomat",
+    "expected": "istiqomat",
+    "type": "phonetic"
+  },
+  {
+    "input": "sxahar",
+    "expected": "shahar",
+    "type": "phonetic"
+  },
+  {
+    "input": "sxuningdek",
+    "expected": "shuningdek",
+    "type": "phonetic"
+  },
+  {
+    "input": "omumiy",
+    "expected": "umumiy",
+    "type": "phonetic"
+  },
+  {
+    "input": "qylgan",
+    "expected": "qilgan",
+    "type": "phonetic"
+  },
+  {
+    "input": "qylish",
+    "expected": "qilish",
+    "type": "phonetic"
+  },
+  {
+    "input": "qarsxi",
+    "expected": "qarshi",
+    "type": "phonetic"
+  },
+  {
+    "input": "yshlab",
+    "expected": "ishlab",
+    "type": "phonetic"
+  },
+  {
+    "input": "edgan",
+    "expected": "etgan",
+    "type": "phonetic"
+  },
+  {
+    "input": "kadta",
+    "expected": "katta",
+    "type": "phonetic"
+  },
+  {
+    "input": "doshkent",
+    "expected": "toshkent",
+    "type": "phonetic"
+  },
+  {
+    "input": "sxaharlari",
+    "expected": "shaharlari",
+    "type": "phonetic"
+  },
+  {
+    "input": "vyloyati",
+    "expected": "viloyati",
+    "type": "phonetic"
+  },
+  {
+    "input": "mavjod",
+    "expected": "mavjud",
+    "type": "phonetic"
+  },
+  {
+    "input": "ykki",
+    "expected": "ikki",
+    "type": "phonetic"
+  },
+  {
+    "input": "keiin",
+    "expected": "keyin",
+    "type": "phonetic"
+  },
+  {
+    "input": "iaxshi",
+    "expected": "yaxshi",
+    "type": "phonetic"
+  },
+  {
+    "input": "edilgan",
+    "expected": "etilgan",
+    "type": "phonetic"
+  },
+  {
+    "input": "asusiy",
+    "expected": "asosiy",
+    "type": "phonetic"
+  },
+  {
+    "input": "iildan",
+    "expected": "yildan",
+    "type": "phonetic"
+  },
+  {
+    "input": "kummuna",
+    "expected": "kommuna",
+    "type": "phonetic"
+  },
+  {
+    "input": "iilning",
+    "expected": "yilning",
+    "type": "phonetic"
+  },
+  {
+    "input": "ykkinchi",
+    "expected": "ikkinchi",
+    "type": "phonetic"
+  },
+  {
+    "input": "ulish",
+    "expected": "olish",
+    "type": "phonetic"
+  },
+  {
+    "input": "qyldi",
+    "expected": "qildi",
+    "type": "phonetic"
+  },
+  {
+    "input": "iillarda",
+    "expected": "yillarda",
+    "type": "phonetic"
+  },
+  {
+    "input": "qaita",
+    "expected": "qayta",
+    "type": "phonetic"
+  },
+  {
+    "input": "ulingan",
+    "expected": "olingan",
+    "type": "phonetic"
+  },
+  {
+    "input": "aiollar",
+    "expected": "ayollar",
+    "type": "phonetic"
+  },
+  {
+    "input": "fotbol",
+    "expected": "futbol",
+    "type": "phonetic"
+  },
+  {
+    "input": "urqali",
+    "expected": "orqali",
+    "type": "phonetic"
+  },
+  {
+    "input": "iuqori",
+    "expected": "yuqori",
+    "type": "phonetic"
+  },
+  {
+    "input": "qylingan",
+    "expected": "qilingan",
+    "type": "phonetic"
+  },
+  {
+    "input": "rasmyy",
+    "expected": "rasmiy",
+    "type": "phonetic"
+  },
+  {
+    "input": "olarning",
+    "expected": "ularning",
+    "type": "phonetic"
+  },
+  {
+    "input": "jamuasi",
+    "expected": "jamoasi",
+    "type": "phonetic"
+  },
+  {
+    "input": "vafut",
+    "expected": "vafot",
+    "type": "phonetic"
+  },
+  {
+    "input": "aqsx",
+    "expected": "aqsh",
+    "type": "phonetic"
+  },
+  {
+    "input": "zpekiston",
+    "expected": "zbekiston",
+    "type": "phonetic"
+  },
+  {
+    "input": "qapul",
+    "expected": "qabul",
+    "type": "phonetic"
+  },
+  {
+    "input": "numi",
+    "expected": "nomi",
+    "type": "phonetic"
+  },
+  {
+    "input": "yshtirok",
+    "expected": "ishtirok",
+    "type": "phonetic"
+  },
+  {
+    "input": "markazyy",
+    "expected": "markaziy",
+    "type": "phonetic"
+  },
+  {
+    "input": "dumanidagi",
+    "expected": "tumanidagi",
+    "type": "phonetic"
+  },
+  {
+    "input": "retirect",
+    "expected": "redirect",
+    "type": "phonetic"
+  },
+  {
+    "input": "umborida",
+    "expected": "omborida",
+    "type": "phonetic"
+  },
+  {
+    "input": "yborat",
+    "expected": "iborat",
+    "type": "phonetic"
+  },
+  {
+    "input": "ylmiy",
+    "expected": "ilmiy",
+    "type": "phonetic"
+  },
+  {
+    "input": "sximoliy",
+    "expected": "shimoliy",
+    "type": "phonetic"
+  },
+  {
+    "input": "sxahrida",
+    "expected": "shahrida",
+    "type": "phonetic"
+  },
+  {
+    "input": "fauliyati",
+    "expected": "faoliyati",
+    "type": "phonetic"
+  },
+  {
+    "input": "kvatrat",
+    "expected": "kvadrat",
+    "type": "phonetic"
+  },
+  {
+    "input": "tavomida",
+    "expected": "davomida",
+    "type": "phonetic"
+  },
+  {
+    "input": "nyng",
+    "expected": "ning",
+    "type": "phonetic"
+  },
+  {
+    "input": "kelyb",
+    "expected": "kelib",
+    "type": "phonetic"
+  },
+  {
+    "input": "qylib",
+    "expected": "qilib",
+    "type": "phonetic"
+  },
+  {
+    "input": "joda",
+    "expected": "juda",
+    "type": "phonetic"
+  },
+  {
+    "input": "zychligi",
+    "expected": "zichligi",
+    "type": "phonetic"
+  },
+  {
+    "input": "ierda",
+    "expected": "yerda",
+    "type": "phonetic"
+  },
+  {
+    "input": "ukrugi",
+    "expected": "okrugi",
+    "type": "phonetic"
+  },
+  {
+    "input": "darixi",
+    "expected": "tarixi",
+    "type": "phonetic"
+  },
+  {
+    "input": "usiyo",
+    "expected": "osiyo",
+    "type": "phonetic"
+  },
+  {
+    "input": "kadalog",
+    "expected": "katalog",
+    "type": "phonetic"
+  },
+  {
+    "input": "nasxrida",
+    "expected": "nashrida",
+    "type": "phonetic"
+  },
+  {
+    "input": "iaqin",
+    "expected": "yaqin",
+    "type": "phonetic"
+  },
+  {
+    "input": "janobiy",
+    "expected": "janubiy",
+    "type": "phonetic"
+  },
+  {
+    "input": "kylometrga",
+    "expected": "kilometrga",
+    "type": "phonetic"
+  },
+  {
+    "input": "qysmi",
+    "expected": "qismi",
+    "type": "phonetic"
+  },
+  {
+    "input": "piroq",
+    "expected": "biroq",
+    "type": "phonetic"
+  },
+  {
+    "input": "iili",
+    "expected": "yili",
+    "type": "phonetic"
+  },
+  {
+    "input": "edadi",
+    "expected": "etadi",
+    "type": "phonetic"
+  },
+  {
+    "input": "iillar",
+    "expected": "yillar",
+    "type": "phonetic"
+  },
+  {
+    "input": "faqad",
+    "expected": "faqat",
+    "type": "phonetic"
+  },
+  {
+    "input": "ievropa",
+    "expected": "yevropa",
+    "type": "phonetic"
+  },
+  {
+    "input": "tuurkum",
+    "expected": "turkum",
+    "type": "double_char"
+  },
+  {
+    "input": "biilan",
+    "expected": "bilan",
+    "type": "double_char"
+  },
+  {
+    "input": "yiilda",
+    "expected": "yilda",
+    "type": "double_char"
+  },
+  {
+    "input": "ahooli",
+    "expected": "aholi",
+    "type": "double_char"
+  },
+  {
+    "input": "jooylashgan",
+    "expected": "joylashgan",
+    "type": "double_char"
+  },
+  {
+    "input": "toomonidan",
+    "expected": "tomonidan",
+    "type": "double_char"
+  },
+  {
+    "input": "uniing",
+    "expected": "uning",
+    "type": "double_char"
+  },
+  {
+    "input": "biirinchi",
+    "expected": "birinchi",
+    "type": "double_char"
+  },
+  {
+    "input": "puunktlari",
+    "expected": "punktlari",
+    "type": "double_char"
+  },
+  {
+    "input": "naafar",
+    "expected": "nafar",
+    "type": "double_char"
+  },
+  {
+    "input": "qiiladi",
+    "expected": "qiladi",
+    "type": "double_char"
+  },
+  {
+    "input": "yooki",
+    "expected": "yoki",
+    "type": "double_char"
+  },
+  {
+    "input": "aliifbo",
+    "expected": "alifbo",
+    "type": "double_char"
+  },
+  {
+    "input": "ahoolisi",
+    "expected": "aholisi",
+    "type": "double_char"
+  },
+  {
+    "input": "yaangi",
+    "expected": "yangi",
+    "type": "double_char"
+  },
+  {
+    "input": "ushbuu",
+    "expected": "ushbu",
+    "type": "double_char"
+  },
+  {
+    "input": "siifatida",
+    "expected": "sifatida",
+    "type": "double_char"
+  },
+  {
+    "input": "haavolalar",
+    "expected": "havolalar",
+    "type": "double_char"
+  },
+  {
+    "input": "daavlat",
+    "expected": "davlat",
+    "type": "double_char"
+  },
+  {
+    "input": "booshqa",
+    "expected": "boshqa",
+    "type": "double_char"
+  },
+  {
+    "input": "kiiradi",
+    "expected": "kiradi",
+    "type": "double_char"
+  },
+  {
+    "input": "muumkin",
+    "expected": "mumkin",
+    "type": "double_char"
+  },
+  {
+    "input": "taarkibiga",
+    "expected": "tarkibiga",
+    "type": "double_char"
+  },
+  {
+    "input": "qiishloq",
+    "expected": "qishloq",
+    "type": "double_char"
+  },
+  {
+    "input": "yiilgi",
+    "expected": "yilgi",
+    "type": "double_char"
+  },
+  {
+    "input": "maaydoni",
+    "expected": "maydoni",
+    "type": "double_char"
+  },
+  {
+    "input": "miilliy",
+    "expected": "milliy",
+    "type": "double_char"
+  },
+  {
+    "input": "tuumani",
+    "expected": "tumani",
+    "type": "double_char"
+  },
+  {
+    "input": "kiishi",
+    "expected": "kishi",
+    "type": "double_char"
+  },
+  {
+    "input": "istiiqomat",
+    "expected": "istiqomat",
+    "type": "double_char"
+  },
+  {
+    "input": "shaahar",
+    "expected": "shahar",
+    "type": "double_char"
+  },
+  {
+    "input": "shuuningdek",
+    "expected": "shuningdek",
+    "type": "double_char"
+  },
+  {
+    "input": "umuumiy",
+    "expected": "umumiy",
+    "type": "double_char"
+  },
+  {
+    "input": "qiilgan",
+    "expected": "qilgan",
+    "type": "double_char"
+  },
+  {
+    "input": "boosh",
+    "expected": "bosh",
+    "type": "double_char"
+  },
+  {
+    "input": "qiilish",
+    "expected": "qilish",
+    "type": "double_char"
+  },
+  {
+    "input": "oliib",
+    "expected": "olib",
+    "type": "double_char"
+  },
+  {
+    "input": "qaarshi",
+    "expected": "qarshi",
+    "type": "double_char"
+  },
+  {
+    "input": "ishlaab",
+    "expected": "ishlab",
+    "type": "double_char"
+  },
+  {
+    "input": "haaqida",
+    "expected": "haqida",
+    "type": "double_char"
+  },
+  {
+    "input": "etgaan",
+    "expected": "etgan",
+    "type": "double_char"
+  },
+  {
+    "input": "kaatta",
+    "expected": "katta",
+    "type": "double_char"
+  },
+  {
+    "input": "tooshkent",
+    "expected": "toshkent",
+    "type": "double_char"
+  },
+  {
+    "input": "xaalqaro",
+    "expected": "xalqaro",
+    "type": "double_char"
+  },
+  {
+    "input": "shaaharlari",
+    "expected": "shaharlari",
+    "type": "double_char"
+  },
+  {
+    "input": "viiloyati",
+    "expected": "viloyati",
+    "type": "double_char"
+  },
+  {
+    "input": "maavjud",
+    "expected": "mavjud",
+    "type": "double_char"
+  },
+  {
+    "input": "ulaar",
+    "expected": "ular",
+    "type": "double_char"
+  },
+  {
+    "input": "ikkii",
+    "expected": "ikki",
+    "type": "double_char"
+  },
+  {
+    "input": "keeyin",
+    "expected": "keyin",
+    "type": "double_char"
+  },
+  {
+    "input": "yaaxshi",
+    "expected": "yaxshi",
+    "type": "double_char"
+  },
+  {
+    "input": "etiilgan",
+    "expected": "etilgan",
+    "type": "double_char"
+  },
+  {
+    "input": "asoosiy",
+    "expected": "asosiy",
+    "type": "double_char"
+  },
+  {
+    "input": "yiildan",
+    "expected": "yildan",
+    "type": "double_char"
+  },
+  {
+    "input": "koommuna",
+    "expected": "kommuna",
+    "type": "double_char"
+  },
+  {
+    "input": "kuuni",
+    "expected": "kuni",
+    "type": "double_char"
+  },
+  {
+    "input": "yiilning",
+    "expected": "yilning",
+    "type": "double_char"
+  },
+  {
+    "input": "ikkiinchi",
+    "expected": "ikkinchi",
+    "type": "double_char"
+  },
+  {
+    "input": "oliish",
+    "expected": "olish",
+    "type": "double_char"
+  },
+  {
+    "input": "yaana",
+    "expected": "yana",
+    "type": "double_char"
+  },
+  {
+    "input": "haamda",
+    "expected": "hamda",
+    "type": "double_char"
+  },
+  {
+    "input": "qiildi",
+    "expected": "qildi",
+    "type": "double_char"
+  },
+  {
+    "input": "deengiz",
+    "expected": "dengiz",
+    "type": "double_char"
+  },
+  {
+    "input": "teerma",
+    "expected": "terma",
+    "type": "double_char"
+  },
+  {
+    "input": "yiillarda",
+    "expected": "yillarda",
+    "type": "double_char"
+  },
+  {
+    "input": "biiri",
+    "expected": "biri",
+    "type": "double_char"
+  },
+  {
+    "input": "qaayta",
+    "expected": "qayta",
+    "type": "double_char"
+  },
+  {
+    "input": "oliingan",
+    "expected": "olingan",
+    "type": "double_char"
+  },
+  {
+    "input": "ayoollar",
+    "expected": "ayollar",
+    "type": "double_char"
+  },
+  {
+    "input": "fuutbol",
+    "expected": "futbol",
+    "type": "double_char"
+  },
+  {
+    "input": "baarcha",
+    "expected": "barcha",
+    "type": "double_char"
+  },
+  {
+    "input": "orqaali",
+    "expected": "orqali",
+    "type": "double_char"
+  },
+  {
+    "input": "yuuqori",
+    "expected": "yuqori",
+    "type": "double_char"
+  },
+  {
+    "input": "qiilingan",
+    "expected": "qilingan",
+    "type": "double_char"
+  },
+  {
+    "input": "raasmiy",
+    "expected": "rasmiy",
+    "type": "double_char"
+  },
+  {
+    "input": "ulaarning",
+    "expected": "ularning",
+    "type": "double_char"
+  },
+  {
+    "input": "jaamoasi",
+    "expected": "jamoasi",
+    "type": "double_char"
+  },
+  {
+    "input": "vaafot",
+    "expected": "vafot",
+    "type": "double_char"
+  },
+  {
+    "input": "ammoo",
+    "expected": "ammo",
+    "type": "double_char"
+  },
+  {
+    "input": "tuurli",
+    "expected": "turli",
+    "type": "double_char"
+  },
+  {
+    "input": "olgaan",
+    "expected": "olgan",
+    "type": "double_char"
+  },
+  {
+    "input": "zbeekiston",
+    "expected": "zbekiston",
+    "type": "double_char"
+  },
+  {
+    "input": "qaabul",
+    "expected": "qabul",
+    "type": "double_char"
+  },
+  {
+    "input": "roossiya",
+    "expected": "rossiya",
+    "type": "double_char"
+  },
+  {
+    "input": "amaalga",
+    "expected": "amalga",
+    "type": "double_char"
+  },
+  {
+    "input": "ishtiirok",
+    "expected": "ishtirok",
+    "type": "double_char"
+  },
+  {
+    "input": "maarkaziy",
+    "expected": "markaziy",
+    "type": "double_char"
+  },
+  {
+    "input": "tuumanidagi",
+    "expected": "tumanidagi",
+    "type": "double_char"
+  },
+  {
+    "input": "reedirect",
+    "expected": "redirect",
+    "type": "double_char"
+  },
+  {
+    "input": "omboorida",
+    "expected": "omborida",
+    "type": "double_char"
+  },
+  {
+    "input": "iboorat",
+    "expected": "iborat",
+    "type": "double_char"
+  },
+  {
+    "input": "ilmiiy",
+    "expected": "ilmiy",
+    "type": "double_char"
+  },
+  {
+    "input": "saathidan",
+    "expected": "sathidan",
+    "type": "double_char"
+  },
+  {
+    "input": "shiimoliy",
+    "expected": "shimoliy",
+    "type": "double_char"
+  },
+  {
+    "input": "shaahrida",
+    "expected": "shahrida",
+    "type": "double_char"
+  },
+  {
+    "input": "faaoliyati",
+    "expected": "faoliyati",
+    "type": "double_char"
+  },
+  {
+    "input": "kvaadrat",
+    "expected": "kvadrat",
+    "type": "double_char"
+  },
+  {
+    "input": "maarta",
+    "expected": "marta",
+    "type": "double_char"
+  },
+  {
+    "input": "keerak",
+    "expected": "kerak",
+    "type": "double_char"
+  },
+  {
+    "input": "erkaak",
+    "expected": "erkak",
+    "type": "double_char"
+  },
+  {
+    "input": "kitoob",
+    "expected": "kitob",
+    "type": "real"
+  },
+  {
+    "input": "yaxshii",
+    "expected": "yaxshi",
+    "type": "real"
+  },
+  {
+    "input": "davlaat",
+    "expected": "davlat",
+    "type": "real"
+  },
+  {
+    "input": "maktaab",
+    "expected": "maktab",
+    "type": "real"
+  },
+  {
+    "input": "odaam",
+    "expected": "odam",
+    "type": "real"
+  },
+  {
+    "input": "bolaa",
+    "expected": "bola",
+    "type": "real"
+  },
+  {
+    "input": "qizlaar",
+    "expected": "qizlar",
+    "type": "real"
+  },
+  {
+    "input": "kitop",
+    "expected": "kitob",
+    "type": "real"
+  },
+  {
+    "input": "maktad",
+    "expected": "maktab",
+    "type": "real"
+  },
+  {
+    "input": "maktb",
+    "expected": "maktab",
+    "type": "real"
+  },
+  {
+    "input": "klob",
+    "expected": "klub",
+    "type": "real"
+  },
+  {
+    "input": "yaxshhi",
+    "expected": "yaxshi",
+    "type": "real"
+  },
+  {
+    "input": "uchhunn",
+    "expected": "uchun",
+    "type": "real"
+  },
+  {
+    "input": "yannggi",
+    "expected": "yangi",
+    "type": "real"
+  },
+  {
+    "input": "hammaa",
+    "expected": "hamma",
+    "type": "real"
+  },
+  {
+    "input": "biizning",
+    "expected": "bizning",
+    "type": "real"
+  },
+  {
+    "input": "siizdagi",
+    "expected": "sizdagi",
+    "type": "real"
+  },
+  {
+    "input": "qaayda",
+    "expected": "qayda",
+    "type": "real"
+  },
+  {
+    "input": "yingichka",
+    "expected": "ingichka",
+    "type": "real"
+  },
+  {
+    "input": "bilimiy",
+    "expected": "bilimi",
+    "type": "real"
+  }
+]

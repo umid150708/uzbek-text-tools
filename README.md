@@ -107,7 +107,20 @@ print(result["spell_check"]["errors_found"])  # 1
 | Mixed-script | `transliterate_mixed()` classifies each token by its Cyrillic character ratio (threshold 0.3) and routes it independently |
 | Dictionary | ~548k words from Uzbek Wikipedia + CC-100 web corpus, frequency ≥ 3; hosted on HuggingFace Hub, cached locally on first use |
 | Stemmer | Rule-based suffix stripper (35 suffixes, longest-first); vowel guard prevents false `-i` matches; up to 3 iterative passes |
-| Spell checker | Weighted edit distance ≤ 2 (Uzbek confusion pairs cost 0.5); length-window pre-filter ±2 chars; frequency tiebreaker |
+| Spell checker | Weighted edit distance ≤ 2 (Uzbek confusion pairs cost 0.5); character-bucket index pre-filters candidates by first char + length (~10–20× fewer comparisons); frequency tiebreaker |
+
+## Benchmark
+
+220 test cases (100 phonetic, 100 double-char, 20 real-user typos).
+
+| Category | Top-1 | Top-3 |
+|---|---|---|
+| Phonetic confusions | 99.0% | 99.0% |
+| Double-char typos | 99.0% | 99.0% |
+| Real user typos | 90.0% | 100.0% |
+| **Overall** | **98.2%** | **99.1%** |
+
+Run it yourself: `python scripts/evaluate.py`
 
 ## Known limitations
 
