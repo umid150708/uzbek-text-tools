@@ -1,25 +1,94 @@
 import pytest
-from uzbek_text_tools import SpellChecker
+from uzbek_text_tools.spellchecker import UzbekSpellChecker
+
+# One shared instance — loading 513k words once per test session is enough
+checker = UzbekSpellChecker()
 
 
-@pytest.fixture
-def sc():
-    return SpellChecker()
+# ------------------------------------------------------------------
+# is_correct
+# ------------------------------------------------------------------
+
+def test_correct_word():
+    assert checker.is_correct("kitob") is True
+
+def test_correct_word_case_insensitive():
+    assert checker.is_correct("Kitob") is True
+
+def test_incorrect_word():
+    assert checker.is_correct("kitoob") is False
+
+def test_correct_uzbek_special_chars():
+    assert checker.is_correct("oʻzbekiston") is True
+
+def test_unknown_garbage():
+    assert checker.is_correct("xyzzzq") is False
 
 
-def test_correct_word_is_accepted(sc):
-    assert sc.is_correct("salom") is True
+# ------------------------------------------------------------------
+# suggest
+# ------------------------------------------------------------------
+
+def test_suggestion_exists():
+    suggestions = checker.suggest("kitoob")
+    assert "kitob" in suggestions
+
+def test_suggest_returns_list():
+    result = checker.suggest("blan")
+    assert isinstance(result, list)
+
+def test_suggest_correct_word_returns_itself():
+    result = checker.suggest("bilan")
+    assert result == ["bilan"]
+
+def test_suggest_top_n_respected():
+    result = checker.suggest("kitoob", top_n=2)
+    assert len(result) <= 2
+
+def test_suggest_closer_match_comes_first():
+    # "kitob" is distance-1 from "kitoob"; it should rank before distance-2 words
+    result = checker.suggest("kitoob")
+    assert result[0] == "kitob"
+
+def test_suggest_frequency_breaks_ties():
+    # "bilan" (freq ~386k) should beat any equally-close rare word
+    result = checker.suggest("billan")
+    assert "bilan" in result
 
 
-def test_unknown_word_is_rejected(sc):
-    assert sc.is_correct("xyzabc") is False
+# ------------------------------------------------------------------
+# correct
+# ------------------------------------------------------------------
+
+def test_correct_fixes_typo():
+    assert checker.correct("kitoob") == "kitob"
+
+def test_correct_leaves_good_word():
+    assert checker.correct("kitob") == "kitob"
 
 
-def test_suggest_returns_list(sc):
-    suggestions = sc.suggest("salm")
-    assert isinstance(suggestions, list)
+# ------------------------------------------------------------------
+# check_text
+# ------------------------------------------------------------------
 
+def test_check_text_finds_errors():
+    result = checker.check_text("Bu kitoob juda yaxshi")
+    assert result['errors_found'] >= 1
 
-def test_correct_fixes_typo(sc):
-    result = sc.correct("salm")
-    assert result == "salom"
+def test_check_text_clean_sentence():
+    result = checker.check_text("Bu kitob juda yaxshi")
+    assert result['errors_found'] == 0
+
+def test_check_text_counts_words():
+    result = checker.check_text("Bu kitob juda yaxshi")
+    assert result['total_words'] == 4
+
+def test_check_text_error_has_suggestions():
+    result = checker.check_text("Bu kitoob yaxshi")
+    error = next(e for e in result['errors'] if e['word'].lower() == 'kitoob')
+    assert len(error['suggestions']) > 0
+    assert "kitob" in error['suggestions']
+
+def test_check_text_multi_error():
+    result = checker.check_text("kitoob yaxshii")
+    assert result['errors_found'] == 2

@@ -1,5 +1,5 @@
 from .transliterator import Transliterator
-from .spellchecker import SpellChecker
+from .spellchecker import UzbekSpellChecker
 
 
 class Pipeline:
@@ -7,7 +7,8 @@ class Pipeline:
 
     def __init__(self, dictionary_path: str | None = None):
         self.transliterator = Transliterator()
-        self.spellchecker = SpellChecker(dictionary_path)
+        kwargs = {"dictionary_path": dictionary_path} if dictionary_path else {}
+        self.spellchecker = UzbekSpellChecker(**kwargs)
 
     def process(self, text: str, script: str = "latin") -> dict:
         """
