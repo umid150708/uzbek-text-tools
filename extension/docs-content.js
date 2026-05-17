@@ -1,14 +1,21 @@
 /**
  * docs-content.js  —  Google Docs content script
  *
- * Changes vs v1:
- *  • Auto-trigger on page load: watches for .kix-lineview-text-block nodes
- *    to appear (Docs renders asynchronously) and fires the first check
- *    automatically — no need to type anything.
- *  • Language detection: isLikelyUzbek() gates every API call so English,
- *    Russian, or other-language documents are silently ignored.
- *  • Refactored into a single runCheck() helper used by both the auto-
- *    trigger and the keyup listener.
+ * Key fixes vs previous version
+ * ──────────────────────────────
+ * 1. isLikelyUzbek() — Google Docs auto-converts straight apostrophes to
+ *    curly RIGHT SINGLE QUOTATION MARK (U+2019).  The old regex only checked
+ *    for basic ASCII `'` so it ALWAYS returned false for real Docs text.
+ *    Now uses explicit Unicode escapes for all variants.
+ *
+ * 2. readDocsText() — tries 5 selectors in order of reliability so we
+ *    survive across Google Docs DOM versions.
+ *
+ * 3. Auto-trigger uses setInterval polling (200 ms) in addition to
+ *    MutationObserver + timeout fallbacks — handles the async Docs loader
+ *    without relying on observer firing at exactly the right moment.
+ *
+ * 4. Handles CHECK_NOW message from the popup's "Hozir tekshirish" button.
  */
 
 'use strict'
@@ -21,55 +28,91 @@ let sidebarEl      = null
 let ignoredKeys    = new Set()
 let lastErrors     = []
 let lastTotal      = 0
-let autoCheckDone  = false   // prevent firing multiple auto-checks on load
+let autoCheckDone  = false
+let pollTimer      = null
 
 // ── Language detection ────────────────────────────────────────────────────────
 /**
- * Returns true when the text is likely Latin-script Uzbek.
+ * Returns true when text is likely Latin-script Uzbek.
  *
- * Detection strategy (score-based):
- *  1. o' / g'  — near-definitive Uzbek Latin markers  (→ instant true)
- *  2. High-frequency Uzbek function words              (2+ → true)
- *  3. Uzbek digraph density (sh / ch / ng)             (high ratio → true)
+ * BUG FIXED: Google Docs auto-converts `'` (U+0027) to `'` (U+2019 RIGHT
+ * SINGLE QUOTATION MARK).  Previous regex missed U+2019 entirely so every
+ * real Google Docs file scored 0 and the check was silently skipped.
  *
- * Hard exclusions:
- *  • Cyrillic script   — our spell-checker is Latin-only
- *  • Very short text   — too little signal, try anyway
+ * Apostrophe variants handled:
+ *   U+0027  APOSTROPHE                  (keyboard / plain text)
+ *   U+2018  LEFT SINGLE QUOTATION MARK  (rare)
+ *   U+2019  RIGHT SINGLE QUOTATION MARK (Google Docs default!) ← was missing
+ *   U+02BB  MODIFIER LETTER TURNED COMMA
+ *   U+02BC  MODIFIER LETTER APOSTROPHE
  */
 function isLikelyUzbek(text) {
   if (!text) return false
-  const bare = text.replace(/\s/g, '')
-  if (bare.length < 15) return true            // too short to tell — try anyway
+  if (text.replace(/\s/g, '').length < 15) return true  // too short — try anyway
 
-  // Cyrillic → Latin checker won't help
+  // Cyrillic → our checker is Latin-only
   if (/[Ѐ-ӿ]/.test(text)) return false
 
   const t = text.toLowerCase()
 
-  // o' / g' are almost exclusive to Uzbek Latin orthography
-  if (/[og][''ʻʼ]/.test(t)) return true
+  // o' / g' in ANY apostrophe variant — including Google Docs curly quotes
+  const APO = '['‘’ʻʼ]'
+  if (new RegExp('[og]' + APO).test(t)) return true
 
-  // High-frequency Uzbek function words
-  const UZBEK_WORDS = /\b(va|bu|bir|biz|siz|ular|men|sen|bor|ham|lekin|ammo|uchun|bilan|keyin|oldin|emas|chunki|hali|endi|nima|kim|qayda|yerda|qanday|qachon|shunday|bunday)\b/g
-  if ((t.match(UZBEK_WORDS) || []).length >= 2) return true
+  // ≥2 high-frequency Uzbek function words
+  const WORDS = /\b(va|bu|bir|biz|siz|ular|men|sen|bor|ham|lekin|ammo|uchun|bilan|keyin|oldin|emas|chunki|hali|endi|nima|kim|qayda|yerda|qanday|qachon|shunday|bunday|agar|faqat|hech|juda|eng)\b/g
+  if ((t.match(WORDS) || []).length >= 2) return true
 
-  // High density of Uzbek-typical digraphs relative to word count
-  const wordCount     = (t.match(/\b\w+\b/g) || []).length
-  const digraphCount  = (t.match(/sh|ch|ng/g) || []).length
-  if (wordCount >= 5 && digraphCount / wordCount > 0.35) return true
+  // Uzbek digraph density
+  const words    = (t.match(/\b\w+\b/g) || []).length
+  const digraphs = (t.match(/sh|ch|ng/g) || []).length
+  if (words >= 5 && digraphs / words > 0.3) return true
 
   return false
 }
 
 // ── Read document text ────────────────────────────────────────────────────────
+/**
+ * Tries five strategies in order of precision.
+ * Returns the best non-empty result, or null if the editor hasn't loaded yet.
+ */
 function readDocsText() {
+  // 1. Individual text blocks (screen-reader accessibility nodes)
   const blocks = document.querySelectorAll('.kix-lineview-text-block')
-  if (blocks.length)
-    return Array.from(blocks).map(b => b.textContent).join('\n').trim()
+  if (blocks.length > 0) {
+    const t = Array.from(blocks).map(b => b.textContent).join('\n').trim()
+    if (t.length > 5) return t
+  }
+
+  // 2. Word-level nodes (finer granularity, available in most Docs versions)
+  const wordNodes = document.querySelectorAll('.kix-wordhtmlgenerator-word-node')
+  if (wordNodes.length > 0) {
+    const t = Array.from(wordNodes).map(w => w.textContent).join('').trim()
+    if (t.length > 5) return t
+  }
+
+  // 3. Paragraph containers
+  const paras = document.querySelectorAll('[class*="kix-paragraph"]')
+  if (paras.length > 0) {
+    const t = Array.from(paras).map(p => p.textContent).join('\n').trim()
+    if (t.length > 5) return t
+  }
+
+  // 4. The whole editor surface (broad but reliable if above fail)
+  const editor = document.querySelector('.kix-appview-editor, .docs-editor-container')
+  if (editor) {
+    const t = editor.innerText?.trim()
+    if (t && t.length > 5) return t
+  }
+
+  // 5. Iframe fallback
   try {
     const iframe = document.querySelector('.docs-texteventtarget-iframe')
-    return iframe?.contentDocument?.body?.innerText?.trim() ?? null
-  } catch { return null }
+    const t = iframe?.contentDocument?.body?.innerText?.trim()
+    if (t && t.length > 5) return t
+  } catch { /* cross-origin guard */ }
+
+  return null
 }
 
 // ── Background relay ──────────────────────────────────────────────────────────
@@ -85,7 +128,7 @@ function callBg(msg) {
 
 // ── Category helper ───────────────────────────────────────────────────────────
 function getCategory(word, suggestion) {
-  const norm = s => s.toLowerCase().replace(/[''ʻʼ]/g, "'")
+  const norm = s => s.toLowerCase().replace(/['‘’ʻʼ]/g, "'")
   const w = norm(word), s = norm(suggestion)
   if (w.replace(/'/g, '') === s.replace(/'/g, '')) return 'Apostrof belgisi'
   if (Math.abs(w.length - s.length) > 3) return "To'liqsiz so'z"
@@ -97,7 +140,6 @@ async function runCheck(text) {
   if (!text || text.length < 3) return
 
   if (!isLikelyUzbek(text)) {
-    // If the sidebar is visible, tell the user why we're not checking
     if (sidebarEl && document.body.contains(sidebarEl)) {
       const body = sidebarEl.querySelector('.uz-docs-body')
       if (body) {
@@ -111,7 +153,6 @@ async function runCheck(text) {
     return
   }
 
-  // Show loading state in sidebar
   showLoadingSidebar()
 
   try {
@@ -149,14 +190,17 @@ function showLoadingSidebar() {
       </div>
     </div>
   `
-  sidebar.querySelector('.uz-docs-close').onclick = () => { sidebarEl.remove(); sidebarEl = null }
+  sidebar.querySelector('.uz-docs-close').onclick = () => {
+    sidebarEl.remove()
+    sidebarEl = null
+  }
 }
 
 function showErrorSidebar(msg) {
   const sidebar = getOrCreateSidebar()
   const body = sidebar.querySelector('.uz-docs-body')
   if (body) {
-    body.innerHTML = `<div class="uz-docs-lang-notice">❌ API bilan ulanishda xato: ${msg}</div>`
+    body.innerHTML = `<div class="uz-docs-lang-notice">❌ Xato: ${msg}</div>`
   }
 }
 
@@ -221,7 +265,7 @@ function renderSidebar(errors, totalWords) {
     ok.textContent = '✓ Xatolar topilmadi'
     body.appendChild(ok)
   } else {
-    visible.forEach((err, visIdx) => {
+    visible.forEach((err) => {
       const origIdx = errors.indexOf(err)
       const [top, ...rest] = err.suggestions
       if (!top) return
@@ -315,40 +359,50 @@ function applySequential(list, idx) {
 }
 
 // ── Auto-trigger on page load ─────────────────────────────────────────────────
-/**
- * Google Docs loads text asynchronously — .kix-lineview-text-block nodes
- * may not exist when the content script first runs.
- *
- * Strategy:
- *  1. MutationObserver fires the first check as soon as text blocks appear.
- *  2. Fallback timeouts (2 s, 5 s) catch edge cases where the observer
- *     callback fires before enough blocks have been added.
- */
 function tryAutoCheck() {
   if (autoCheckDone) return
   const text = readDocsText()
-  if (!text || text.length < 10) return   // not enough text yet
+  if (!text || text.length < 10) return
   autoCheckDone = true
+  clearInterval(pollTimer)   // stop polling once we have text
   runCheck(text)
 }
 
-// Watch for Docs text blocks being added to the DOM
-const docsObserver = new MutationObserver(() => {
+// Poll every 300ms until text appears (handles async Docs loader)
+pollTimer = setInterval(tryAutoCheck, 300)
+
+// Stop polling after 30s regardless (tab may have no text)
+setTimeout(() => clearInterval(pollTimer), 30000)
+
+// MutationObserver as additional trigger
+new MutationObserver(() => {
   if (!autoCheckDone) tryAutoCheck()
-})
-docsObserver.observe(document.body, { childList: true, subtree: true })
+}).observe(document.body, { childList: true, subtree: true })
 
-// Fallback: try after 2 s and 5 s even if observer didn't help
-setTimeout(tryAutoCheck, 2000)
-setTimeout(tryAutoCheck, 5000)
-
-// ── Keyup listener (handles subsequent edits) ─────────────────────────────────
+// ── Keyup listener (handles edits after initial load) ────────────────────────
 document.addEventListener('keyup', () => {
   clearTimeout(debounceTimer)
   debounceTimer = setTimeout(() => {
     const text = readDocsText()
     if (!text || text.length < 3) return
-    autoCheckDone = true   // mark done so observer stops trying
+    autoCheckDone = true
+    clearInterval(pollTimer)
     runCheck(text)
   }, DEBOUNCE_MS)
-}, true)   // capture phase — Docs stops propagation early
+}, true)
+
+// ── Handle CHECK_NOW from popup "Hozir tekshirish" button ────────────────────
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg.type === 'CHECK_NOW') {
+    autoCheckDone = false
+    const text = readDocsText()
+    if (text && text.length > 5) {
+      autoCheckDone = true
+      runCheck(text)
+      sendResponse({ ok: true })
+    } else {
+      sendResponse({ ok: false, reason: 'No text found in document' })
+    }
+  }
+  return false
+})

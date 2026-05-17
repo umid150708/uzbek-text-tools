@@ -33,17 +33,19 @@ function isLikelyUzbek(text) {
 
   const t = text.toLowerCase()
 
-  // o' / g' are near-exclusive to Uzbek Latin orthography
-  if (/[og][''ʻʼ]/.test(t)) return true
+  // o' / g' — including U+2019 RIGHT SINGLE QUOTATION MARK (used by Google Docs,
+  // Google Forms, many rich-text editors that auto-correct straight apostrophes)
+  const APO = '['''ʻʼ]'
+  if (new RegExp('[og]' + APO).test(t)) return true
 
   // ≥2 high-frequency Uzbek function words
-  const WORDS = /\b(va|bu|bir|biz|siz|ular|men|sen|bor|ham|lekin|ammo|uchun|bilan|keyin|oldin|emas|chunki|hali|endi|nima|kim|qayda|yerda|qanday|qachon|shunday|bunday)\b/g
+  const WORDS = /\b(va|bu|bir|biz|siz|ular|men|sen|bor|ham|lekin|ammo|uchun|bilan|keyin|oldin|emas|chunki|hali|endi|nima|kim|qayda|yerda|qanday|qachon|shunday|bunday|agar|faqat|hech|juda|eng)\b/g
   if ((t.match(WORDS) || []).length >= 2) return true
 
-  // High digraph density relative to word count
+  // Uzbek digraph density
   const words    = (t.match(/\b\w+\b/g) || []).length
   const digraphs = (t.match(/sh|ch|ng/g) || []).length
-  if (words >= 5 && digraphs / words > 0.35) return true
+  if (words >= 5 && digraphs / words > 0.3) return true
 
   return false
 }

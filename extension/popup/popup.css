@@ -115,6 +115,22 @@ body {
 .badge--error    { background: #fed7d7; color: #9b2c2c; }
 .badge--checking { background: #e2e8f0; color: #4a5568; }
 
+.check-now-btn {
+  margin-top: 10px;
+  width: 100%;
+  padding: 8px;
+  background: #45a049;
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+.check-now-btn:hover { background: #2e7d32; }
+
 /* ── Footer ───────────────────────────────────────────────────────────────── */
 .popup-footer {
   padding: 8px 16px;
