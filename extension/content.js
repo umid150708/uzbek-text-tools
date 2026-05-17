@@ -35,8 +35,8 @@ function isLikelyUzbek(text) {
 
   // o' / g' — including U+2019 RIGHT SINGLE QUOTATION MARK (used by Google Docs,
   // Google Forms, many rich-text editors that auto-correct straight apostrophes)
-  const APO = '['''ʻʼ]'
-  if (new RegExp('[og]' + APO).test(t)) return true
+  // U+0027 ' | U+2018 ' | U+2019 ' | U+02BB ʻ | U+02BC ʼ
+  if (/[og]['''ʻʼ]/.test(t)) return true
 
   // ≥2 high-frequency Uzbek function words
   const WORDS = /\b(va|bu|bir|biz|siz|ular|men|sen|bor|ham|lekin|ammo|uchun|bilan|keyin|oldin|emas|chunki|hali|endi|nima|kim|qayda|yerda|qanday|qachon|shunday|bunday|agar|faqat|hech|juda|eng)\b/g

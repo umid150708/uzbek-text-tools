@@ -55,9 +55,9 @@ function isLikelyUzbek(text) {
 
   const t = text.toLowerCase()
 
-  // o' / g' in ANY apostrophe variant — including Google Docs curly quotes
-  const APO = '['‘’ʻʼ]'
-  if (new RegExp('[og]' + APO).test(t)) return true
+  // o’ / g’ in ANY apostrophe variant — including Google Docs curly quotes
+  // U+0027 ‘ | U+2018 ‘ | U+2019 ‘ | U+02BB ʻ | U+02BC ʼ
+  if (/[og][‘‘’ʻʼ]/.test(t)) return true
 
   // ≥2 high-frequency Uzbek function words
   const WORDS = /\b(va|bu|bir|biz|siz|ular|men|sen|bor|ham|lekin|ammo|uchun|bilan|keyin|oldin|emas|chunki|hali|endi|nima|kim|qayda|yerda|qanday|qachon|shunday|bunday|agar|faqat|hech|juda|eng)\b/g
