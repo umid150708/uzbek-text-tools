@@ -11,7 +11,7 @@ setup(
     url="https://github.com/umid150708/uzbek-text-tools",
     packages=find_packages(exclude=["tests*", "notebooks*", "demo*", "scripts*"]),
     package_data={"uzbek_text_tools": ["data/*.json"]},
-    install_requires=["huggingface_hub"],
+    install_requires=["huggingface_hub", "rapidfuzz>=3.0"],
     python_requires=">=3.8",
     classifiers=[
         "Programming Language :: Python :: 3",

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="popup.css" />
+  <title>O'zbek Imlo Tekshiruv</title>
+</head>
+<body>
+  <div class="popup">
+
+    <header class="popup-header">
+      <span class="brand"><b>O'z</b>Tekshiruv</span>
+      <span class="version">v0.1</span>
+    </header>
+
+    <main class="popup-body">
+      <label class="field-label" for="api-url">Backend API manzili</label>
+      <input
+        type="text"
+        id="api-url"
+        class="api-input"
+        placeholder="https://your-api.railway.app"
+        spellcheck="false"
+      />
+      <p class="field-hint">
+        FastAPI serveringiz manzilini kiriting.<br />
+        Lokal test uchun: <code>http://localhost:8000</code>
+      </p>
+
+      <button id="save-btn" class="save-btn">Saqlash</button>
+      <div id="save-msg" class="save-msg"></div>
+
+      <hr class="divider" />
+
+      <div class="status-row">
+        <span class="status-label">Holat</span>
+        <span id="status-badge" class="badge badge--checking">Tekshirilmoqda…</span>
+      </div>
+    </main>
+
+    <footer class="popup-footer">
+      <a
+        href="https://github.com/umid150708/uzbek-text-tools"
+        target="_blank"
+        rel="noopener"
+      >GitHub</a>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

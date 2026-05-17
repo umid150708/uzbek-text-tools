@@ -72,13 +72,13 @@ def test_i_suffix_blocked_on_vowel_stem():
 
 def test_iterative_strip_two_passes():
     """
-    'kitoblarim' (my books) takes two rounds:
-      pass 1: strip '-im'  → 'kitoblar'
-      pass 2: strip '-lar' → 'kitob'
-    Combined 'larim' is not a single SUFFIXES entry, so both passes fire.
+    'kitoblaringizdagi' requires two passes:
+      pass 1: strip '-dagi'    → 'kitoblaringiz'
+      pass 2: strip '-laringiz'→ 'kitob'
+    No single SUFFIXES entry covers '-laringizdagi', so both passes fire.
     """
-    result = iterative_strip("kitoblarim")
-    assert result == ["kitoblar", "kitob"]
+    result = iterative_strip("kitoblaringizdagi")
+    assert result == ["kitoblaringiz", "kitob"]
 
 def test_iterative_strip_already_bare():
     """A root with no suffix returns an empty list (nothing stripped)."""
@@ -147,9 +147,12 @@ def test_vocab_guard_blocks_non_root_phantom_stem():
 def test_iterative_strip_passes_vocab_through():
     """
     iterative_strip must forward the vocabulary to every pass.
-    With a vocabulary of only {'kitob', 'kitoblar'}, both intermediate
-    stems are valid so both passes fire.
+    'kitoblaringizdagi' with vocab {'kitob', 'kitoblaringiz'} fires:
+      pass 1: strip '-dagi'     → 'kitoblaringiz'  ← in vocab → accepted
+      pass 2: strip '-laringiz' → 'kitob'          ← in vocab → accepted
+    If vocab were NOT forwarded, pass 2 would strip to an unknown stem
+    and the vocabulary gate would block it.
     """
-    vocab = {"kitob", "kitoblar"}
-    result = iterative_strip("kitoblarim", vocabulary=vocab)
-    assert result == ["kitoblar", "kitob"]
+    vocab = {"kitob", "kitoblaringiz"}
+    result = iterative_strip("kitoblaringizdagi", vocabulary=vocab)
+    assert result == ["kitoblaringiz", "kitob"]

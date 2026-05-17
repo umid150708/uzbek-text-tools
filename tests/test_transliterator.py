@@ -1,5 +1,6 @@
 import pytest
 from uzbek_text_tools.transliterator import transliterate, transliterate_mixed, detect_token_script
+from uzbek_text_tools.tokenizer import tokenize, word_tokens
 
 
 def test_simple_word():
@@ -96,3 +97,39 @@ def test_detect_token_script_cyrillic():
 
 def test_detect_token_script_digits():
     assert detect_token_script("2025") == "latin"
+
+
+# ------------------------------------------------------------------
+# v0.2 — Apostrophe-aware tokeniser (Fix 2)
+# ------------------------------------------------------------------
+
+def test_tokenize_apostrophe_word_stays_whole():
+    """o'g'il must come out as a single token — apostrophe is a phoneme marker."""
+    assert word_tokens("o'g'il") == ["o'g'il"]
+
+
+def test_tokenize_oqituvchi_stays_whole():
+    """o'qituvchi — o' is a single phoneme; must not be split."""
+    assert word_tokens("o'qituvchi") == ["o'qituvchi"]
+
+
+def test_tokenize_punctuation_separated():
+    """Comma between two words must produce two word tokens and one punct token."""
+    result = tokenize("kitob, daftar")
+    assert result == ["kitob", ",", " ", "daftar"]
+    # word_tokens strips the punct/space
+    assert word_tokens("kitob, daftar") == ["kitob", "daftar"]
+
+
+def test_tokenize_sentence_with_apostrophe_words():
+    """A full sentence: every apostrophe-word stays intact, plain words split correctly."""
+    tokens = word_tokens("Bu o'g'il juda yaxshi!")
+    assert tokens == ["Bu", "o'g'il", "juda", "yaxshi"]
+
+
+def test_tokenize_unicode_apostrophe_variants():
+    """ʻ (U+02BB) and ʼ (U+02BC) are accepted just like ASCII apostrophe."""
+    # oʻrik uses the Unicode modifier letter ʻ
+    assert word_tokens("oʻrik") == ["oʻrik"]
+    # gʻoya uses the Unicode modifier letter ʼ (some fonts/keyboards)
+    assert word_tokens("gʼoya") == ["gʼoya"]

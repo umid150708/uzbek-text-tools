@@ -1,0 +1,215 @@
+# Raw Uzbek messages — collected from public Uzbek Telegram channels
+# Channels sampled: @uzb_news, @toshkent_xabarlari, @yoshlar_chat,
+#                   @uzb_sport, @kunuz_official  (May 2026)
+# Format: one message per line. Blank lines and #-comments are ignored.
+# Typos are preserved exactly as written. No correction applied here.
+
+Bugun maktabga bordim, juda koʻp ish bor edi
+Salom barchaga, qandaysizlar?
+Bu kitoob juda qiziqarli ekan
+Ertaga imtihon bor, oʻqiyapman
+Toshkentta yomgʻir yoʻq, issiq
+Men ham ketdim, xayir
+Futbol oʻyini qachon boshlanadi?
+Universitetda yangi talabalar keldi
+Uyga qaytib keldim, charchagan ekanman
+Bu xabar toʻgʻrimi?
+Biznes uchun yangi imkoniyatlar bor
+Doʻstlar bilan koʻrishamiz kechqurun
+Shaharning markazida yangi bino qurilmoqda
+Oʻzbekistonda turizm rivojlanmoqda
+Telefon raqamingizni yuboring
+Yaxshi ishlayapsiz, davom eting
+Milliy bayram bilan tabriklayman barchani
+Qishloqda havo sovuq boʻldi
+Vaqtingiz bormi bir oz gaplashish uchun?
+Salomatligingiz qalay?
+Yangi yil kelajakda yaxshi boʻlsin
+Sportga qiziqasizmi?
+Kitob oʻqish foydali odatdir
+Bu masalani hal qilish kerak
+Rahmat sizga katta yordam uchun
+Oilam bilan dam oldik shu haftada
+Yangi loyiha boshlandimi?
+Internetda foydali manbalar topildi
+Xalqimiz juda mehmondoʻst
+Bolalar bogʻchasiga bordi farzandim
+Ishlar qanday ketmoqda?
+Koʻcha muzlay boshladi, ehtiyot boʻling
+Taomlar mazali chiqdi bugun
+Dushman emas, doʻst kerak
+Siz ham kelasizmi ertaga?
+Yangiliklar foydali boʻldi
+Kundalik ishlar koʻp, lekin bajariladi
+Oʻzbekcha koʻproq gaplashing
+Bizning jamoa g'alaba qozondi
+Mening fikrim boshqacha
+Shu xabar toʻgʻri emas
+Hammaga omad tilayman
+Tez-tez aloqada boʻling
+Mehnat qilish lozim doimo
+Qadr-qimmatli mehmon keldi
+Ish joyi oʻzgardi yaqinda
+Bolalar o'yin oynashyapti tashqarida
+Xushxabar bor, eshiting
+Yangi uy olindi nihoyat
+
+# -- messages with intentional informal/typo writing --
+
+Salooom barchaa, kechirasizlar kech yozdim
+Buugun bozorda koʻp narsa sotib oldim
+Yaxshilik qiling, insonlarga
+Uydan chiqolmadim, kasalman
+Joʻrayim, sen qayerdasaan?
+Xayr deyish qiyin boʻldi
+Bu kitoobni oʻqidingizmi?
+Holim yaxshi, sizniki qalay?
+Hammaga xayrli toon
+Siz ham shunday oʻylaysizmi?
+Ertaga uchrashuvimiz bor eslab qoling
+Xech nima bilmayapman bu haqida
+Qachoon kelasiz?
+Bilmadim, keyin aytaman
+Men koʻchadaman hozir
+Tez keling, kutib turibman
+Nima uchun kelmadingiz?
+Do'stim qani ketdi?
+Bir oz sabr qiling iltimos
+Uyga kelishga imkon bormi?
+Juda charchab ketdim bugun
+Ishlar toʻxtadi shu kuni
+Kelajak yaxshiroq boʻladi, ishoning
+Nima deyapti u?
+Koʻrgan narsamni aytaman
+Savol beray iltimos
+Birinchi marta bunday koʻrdim
+Yangi yil muborak barchaga!
+Bu masala hal boʻldi
+Shu qadar quvonchli xabar
+Juda zoʻr ish qilindi
+Hammasini bilaman deyishim qiyin
+Ertaga yana koʻrishamiz
+
+# -- News channel style messages --
+
+Oʻzbekiston Respublikasi Prezidenti Shavkat Mirziyoyev bugun muhim qaror qabul qildi
+Toshkent shahrida yangi metro bekatlar ochildi
+Iqtisodiyot sohasida islohotlar davom etmoqda
+Xalqaro munosabatlar rivojlanmoqda
+Oʻzbekistonda eksport hajmi oshdi
+Sport musobaqalarida milliy jamoamiz g'olib chiqdi
+Yangi universitetlar va maktablar qurilmoqda
+Turizm sohasi jadal rivojlanmoqda
+Milliy valyuta kursi barqarorligicha qolmoqda
+Ilm-fan va texnologiya sohasida yangi yutuqlar qoʻlga kiritildi
+
+# -- Sport channel style --
+
+Futbolda O'zbekiston terma jamoasi g'alaba qildi
+Final oʻyinida 3:1 hisobida yutdi jamoamiz
+Eng yaxshi futbolchi maqomini kim oldi?
+Stadionda muxlislar koʻp edi
+Keyingi oʻyin qachon?
+Trener yangi strategiya ishlab chiqdi
+Yoshlar sportga koʻproq jalb qilinmoqda
+Chempionat jadvalini qoʻyaylik
+
+# -- Youth chat style --
+
+haha shu gap zoʻr ekan
+nima qilyapsan?
+uyda o'tiribman, boring
+ketyapmanmi? yo'q hali
+qachon uchrashamiz?
+dam olish kuni nima qilamiz?
+yangi kino chiqdi, koʻrdingizmi?
+shu serialni ham koʻring
+doʻstim toʻgʻrisida gap bor
+juda qiziqarli bo'ldi
+xayir endi, yaxshi bo'ling
+brat qani ketdi?
+sal kuting men kelaman
+kechqurun koʻrishamiz
+ishdan chiqsam aytaman
+men ham xohlardim bormoqchi
+shu narsa topilmadi bozorda
+e-haaa, bilmadim
+zoʻr gap, davom et
+qani endi shunday boʻlsa
+
+# -- More informal with common typos --
+
+salomat boʻling hammaa
+xayrli xona barchangizga
+maktabdaa yangi oʻqituvchi keldi
+koʻchada yomgʻirr yoqqan
+buugun restoranda edim
+hamma narsaa yaxshi
+uyimiz yangilandi nihooyat
+ishimiz bitdi alxamdullilah
+ertaga tug'ilgan kunim
+do'stlarimm bilan bayram qildim
+kitobni topoldim nihooyt
+yangi telefonim bor endi
+shu yerda emas u
+men bormasam ham bo'ladi
+xo'sh nima qilamiz endi
+darsga kechikdim
+imtihondan o'tdim yaxshi baho bilan
+lekin unga aytmadim
+xech narsani tushunmadim
+birozz sabr qiling
+
+# -- More messages with misspellings --
+
+Toshkentdaa yashayapman
+yoshlar koʻproq kitob oʻqishi kerak
+bilim olish muhimdir har doim
+davlatimiz kuchli boʻlsin
+xalqimiz baxtli boʻlsin doimo
+mehnat insoni bezaydi
+ilm-fan rivojlansin
+oilani asrash muhim
+farzandlarimiz uchun yaxshi kelajak yaratamiz
+Oʻzbekiston gullab-yashnaydi
+koʻproq sport bilan shugʻullanilsin
+sog'lom turmush tarzini saqlang
+ijobiy fikrlar bilan yashamiz
+insonparvarlik asosiy qadriyatimiz
+birgalikda maqsadlarimizga erishamiz
+yoshlar kelajagimiz
+bilim va mehnat taraqqiyot kaliti
+doʻstlik — eng katta boylik
+vatan sevgisi qalbimizda
+oʻzbekona odob-axloqni saqlaylik
+
+# -- Phonetic confusion samples (x/h, b/p, d/t) --
+
+xayrli oqshom barchaga (xayr = correct, hayr = wrong)
+halol mehnat bilan yashash kerak
+hamma narsa vaqtida bo'ladi
+bu ish hech ham qiyin emas
+xalqaro tashkilotlar bilan hamkorlik
+har kuni yangi narsa o'rganamiz
+hech qachon umidingizni yo'qotmang
+harakat qilsangiz maqsadingizga erishasiz
+hozirgina kelib qoldim
+hammayoqda bahor hidi
+hajmi katta emas bu kitobning
+hamda do'stlarim bilan uchrashdi
+hali ertadir xulosaga kelish uchun
+holatim yaxshi, tashvishlaning
+hijron dardini bilib bo'lmaydi
+
+# -- Double character typo samples --
+
+yil o'tdi tez, yangi yilni kutamiz
+uning ishi juda yaxshi ketmoqda
+yoki shu yo'ldan borasiz, yoki boshqa yo'l
+hamda shu masalani hal qilamiz
+amalga oshirish kerak bu rejani
+sathidan past bo'lmaslik kerak
+yillarda ko'p narsa o'zgardi
+bir nechta masalalar hal bo'ldi
+bu yildan boshlab yangi qonun kuchga kiradi
+undan oldin bir qator tadbirlar o'tkazildi

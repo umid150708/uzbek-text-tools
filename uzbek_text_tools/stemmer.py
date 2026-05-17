@@ -13,19 +13,63 @@ before its sub-suffixes like "dan" or "lar" are attempted individually.
 # strip_suffix() re-sorts by length anyway, but keeping them grouped
 # here makes the list easier to extend.
 SUFFIXES = [
-    # Plural + possessive + case stacks
-    "larimizdan", "larimizga",  "larimizni",  "larimiz",
-    "laringizdan","laringizga", "laringizni", "laringiz",
-    "larингizdan",
-    "imizdagi",
-    "laridan",    "lariga",     "larini",     "larda",
-    "lardan",     "larni",      "larga",
-    "imizdan",    "imizga",     "imizni",     "imiz",
-    "ingizdan",   "ingizga",    "ingizni",    "ingiz",
-    # Single-level case/possessive suffixes
-    "dagi",       "ning",       "dan",        "idan",
-    "ga",         "da",         "ni",         "lar",
-    "im",         "ing",        "i",
+    # ── lar + 1pl-possessive (imiz) + case ───────────────────────────────────
+    # Source: Apertium PLURAL → POSSESSIVES(px1pl=imiz) → CASE-COMMON
+    "larimizning",  "larimizdan",  "larimizga",  "larimizni",
+    "larimizda",
+    "larimiz",
+
+    # ── lar + 2pl-formal-possessive (ingiz) + case ───────────────────────────
+    # Source: Apertium PLURAL → POSSESSIVES(px2pl=ingiz) → CASE-COMMON
+    "laringizning", "laringizdan", "laringizga", "laringizni",
+    "laringizda",
+    "laringiz",
+
+    # ── lar + 1sg-possessive (im) + case ─────────────────────────────────────
+    # Source: Apertium PLURAL → POSSESSIVES(px1sg=im) → CASE-COMMON
+    "larimning",  "larimdan",  "larimga",  "larimni",
+    "larimda",
+    "larim",
+
+    # ── lar + 2sg-possessive (ing) + case ────────────────────────────────────
+    # Source: Apertium PLURAL → POSSESSIVES(px2sg=ing) → CASE-COMMON
+    "laringning", "laringdan", "laringga", "laringni",
+    "laringda",
+    "laring",
+
+    # ── lar + 3sp-possessive (i/si) + dagi / bare cases ─────────────────────
+    # Source: Apertium PLURAL → px3sp / GENPOSS-ETC (dagi)
+    # "laridagi" = lar+i+dagi (in their X-s);  "lardagi" = lar+dagi (in the X-s)
+    "laridagi",   "lardagi",
+    "laridan",    "lariga",    "larini",   "larda",
+    "lardan",     "larni",     "larga",
+
+    # ── 1pl-possessive (imiz) + case ─────────────────────────────────────────
+    # Source: Apertium POSSESSIVES(px1pl) → CASE-COMMON
+    "imizning",  "imizdan",  "imizga",  "imizni",
+    "imizda",
+    "imiz",
+
+    # ── 2pl-formal-possessive (ingiz) + case ─────────────────────────────────
+    # Source: Apertium POSSESSIVES(px2pl) → CASE-COMMON
+    "ingizning", "ingizdan", "ingizga", "ingizni",
+    "ingizda",
+    "ingiz",
+
+    # ── 1sg-possessive (im) + case ───────────────────────────────────────────
+    # Source: Apertium POSSESSIVES(px1sg) → CASE-COMMON
+    "imning",  "imdan",  "imga",  "imni",
+    "imda",
+
+    # ── 2sg-possessive (ing) + case ──────────────────────────────────────────
+    # Source: Apertium POSSESSIVES(px2sg) → CASE-COMMON
+    "ingning", "ingdan", "ingga", "ingni",
+    "ingda",
+
+    # ── Single-level case / possessive / attributive suffixes ─────────────────
+    "dagi",    "ning",    "dan",   "idan",
+    "ga",      "da",      "ni",    "lar",
+    "im",      "ing",     "i",
 ]
 
 # Pre-sorted once at import time — avoids re-sorting on every call

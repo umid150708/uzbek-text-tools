@@ -5,9 +5,20 @@ build/
 __pycache__/
 *.pyc
 *.pyo
-*.egg-info/
-dist/
-build/
 .DS_Store
 .pytest_cache/
 *.ipynb_checkpoints/
+
+# web
+web/node_modules/
+web/dist/
+web/.env.local
+
+# large / generated files
+.claude/
+extracted/
+*.bz2
+*.xz
+notebooks/
+hf_space/
+uzbek_text_tools/data/word_freq_roots.json
