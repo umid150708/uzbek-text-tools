@@ -1,23 +1,17 @@
-/* ── Error underlines — contenteditable ─────────────────────────────────────
-   Injected directly into the host page's DOM.  All classes are prefixed
-   with "uz-" to avoid collisions with the host page's own CSS.            */
+/* ── Error underlines — contenteditable ──────────────────────────────────────
+   All classes prefixed "uz-" to avoid collisions with host page styles.     */
 .uz-error {
-  text-decoration: underline wavy #e53e3e;
+  text-decoration: underline wavy #e74c3c;
   text-underline-offset: 4px;
   cursor: pointer;
   border-radius: 2px;
   transition: background 0.1s;
 }
-.uz-error:hover {
-  background: rgba(229, 62, 62, 0.10);
-}
+.uz-error:hover { background: rgba(231,76,60,.10); }
 
 /* ── Textarea overlay ────────────────────────────────────────────────────────
-   The overlay div has color:transparent so its text is invisible.
-   text-decoration-color must be explicit (not currentColor) so the wavy
-   underline is still visible even though the text is transparent.         */
+   Transparent div that mirrors the textarea; only the red underlines show.  */
 .uz-textarea-overlay {
-  /* positioned + sized by JS; just declarative overflow/wrap rules here  */
   overflow: hidden;
   pointer-events: none;
   white-space: pre-wrap;
@@ -25,22 +19,22 @@
 }
 .uz-textarea-overlay .uz-error {
   text-decoration: underline wavy;
-  text-decoration-color: #e53e3e;   /* explicit — not currentColor       */
+  text-decoration-color: #e74c3c;   /* explicit — not currentColor */
   text-underline-offset: 4px;
-  background: rgba(229, 62, 62, 0.10);
+  background: rgba(231,76,60,.10);
   border-radius: 2px;
 }
 
 /* ── Suggestion dropdown ─────────────────────────────────────────────────────
-   position:absolute on <html> so it floats above everything.              */
+   Floats above everything on the host page.                                  */
 .uz-dropdown {
   position: absolute;
   z-index: 2147483647;
   background: #ffffff;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e0e0e0;
   border-radius: 10px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.14);
-  min-width: 160px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.14);
+  min-width: 170px;
   max-width: 260px;
   overflow: hidden;
   font-family: system-ui, -apple-system, sans-serif;
@@ -56,8 +50,8 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #a0aec0;
-  border-bottom: 1px solid #f1f5f9;
+  color: #9e9e9e;
+  border-bottom: 1px solid #f5f5f5;
 }
 .uz-dropdown-item {
   display: block;
@@ -65,115 +59,229 @@
   padding: 9px 14px;
   font-size: 14px;
   text-align: left;
-  color: #1a202c;
+  color: #212121;
   background: none;
   border: none;
   cursor: pointer;
   font-family: inherit;
+  transition: background .1s;
 }
-.uz-dropdown-item:hover {
-  background: #f0f2f8;
-  color: #5c6bc0;
+.uz-dropdown-item:first-of-type {
+  font-weight: 600;
+  color: #2e7d32;
 }
+.uz-dropdown-item:hover { background: #f5f5f5; }
 .uz-dropdown-empty {
   padding: 10px 14px;
   font-size: 13px;
-  color: #718096;
+  color: #757575;
 }
 
-/* ── Google Docs sidebar ─────────────────────────────────────────────────────
-   A fixed panel injected on the right side of the screen.                 */
+/* ═══════════════════════════════════════════════════════════════════════════
+   Google Docs sidebar  —  QuillBot / Google Docs Assistant style
+   ═══════════════════════════════════════════════════════════════════════════ */
 #uz-docs-sidebar {
   position: fixed;
   top: 60px;
   right: 0;
-  width: 260px;
+  width: 300px;
   max-height: calc(100vh - 80px);
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: #fff;
+  border: 1px solid #e0e0e0;
   border-right: none;
-  border-radius: 12px 0 0 12px;
+  border-radius: 10px 0 0 10px;
   box-shadow: -4px 0 24px rgba(0,0,0,.10);
   z-index: 2147483646;
   display: flex;
   flex-direction: column;
   font-family: system-ui, -apple-system, sans-serif;
   overflow: hidden;
-  transition: transform 0.2s ease;
 }
+
+/* Header */
 .uz-docs-header {
+  flex-shrink: 0;
+  padding: 13px 14px 10px;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  background: #fff;
+}
+.uz-docs-title-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px 14px;
-  border-bottom: 1px solid #f1f5f9;
-  flex-shrink: 0;
+  gap: 7px;
 }
 .uz-docs-title {
   font-size: 14px;
-  font-weight: 600;
-  color: #1a202c;
+  font-weight: 700;
+  color: #212121;
+  flex: 1;
 }
-.uz-docs-title b { color: #5c6bc0; }
+.uz-docs-title b { color: #45a049; }
+
+.uz-docs-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  background: #45a049;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+}
 .uz-docs-close {
   background: none;
   border: none;
-  font-size: 14px;
-  color: #718096;
+  font-size: 13px;
+  color: #757575;
   cursor: pointer;
-  padding: 2px 6px;
+  padding: 3px 7px;
   border-radius: 4px;
   font-family: inherit;
+  transition: background .1s;
 }
-.uz-docs-close:hover { background: #f0f2f8; }
+.uz-docs-close:hover { background: #f5f5f5; }
+
+.uz-docs-stats {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: #757575;
+}
+.uz-docs-stats span { }
+.uz-docs-stat-err { color: #c0392b; font-weight: 600; }
+
+.uz-docs-accept-all {
+  align-self: flex-start;
+  padding: 5px 12px;
+  background: #45a049;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .15s;
+}
+.uz-docs-accept-all:hover { background: #2e7d32; }
+
+/* Body / card list */
 .uz-docs-body {
   overflow-y: auto;
   flex: 1;
-  padding: 10px 12px;
+  padding: 10px 11px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
 }
-.uz-docs-stats {
-  font-size: 12px;
-  color: #718096;
-  margin-bottom: 10px;
-}
+
+/* All-clear */
 .uz-docs-clear {
-  padding: 16px 4px;
+  padding: 18px 6px;
   font-size: 13px;
-  color: #38a169;
   font-weight: 500;
+  color: #27ae60;
+  text-align: center;
 }
-.uz-docs-errors { list-style: none; }
-.uz-docs-error-item {
-  padding: 9px 0;
-  border-bottom: 1px solid #f1f5f9;
+
+/* Error card */
+.uz-docs-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 11px 12px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color .15s;
 }
-.uz-docs-error-item:last-child { border-bottom: none; }
-.uz-docs-error-word {
-  display: block;
+.uz-docs-card:hover { border-color: #c8e6c9; }
+
+.uz-docs-card-category {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: #9e9e9e;
+}
+
+/* word → suggestion row */
+.uz-docs-correction {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.uz-docs-wrong {
   font-size: 14px;
   font-weight: 600;
-  color: #e53e3e;
-  margin-bottom: 6px;
+  color: #c0392b;
+  text-decoration: line-through;
+  text-decoration-color: #c0392b;
 }
-.uz-docs-chips {
+.uz-docs-arrow { font-size: 14px; color: #bdbdbd; }
+.uz-docs-right {
+  font-size: 14px;
+  font-weight: 700;
+  color: #2e7d32;
+}
+
+/* Alt chips */
+.uz-docs-alts {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 4px;
 }
-.uz-docs-chip {
-  padding: 3px 11px;
+.uz-docs-alt-chip {
+  padding: 2px 9px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
-  background: #f0f2f8;
-  border: 1.5px solid #e2e8f0;
-  color: #1a202c;
+  background: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  color: #757575;
   cursor: pointer;
   font-family: inherit;
-  transition: background 0.1s, color 0.1s;
+  transition: background .1s, border-color .1s, color .1s;
 }
-.uz-docs-chip:hover {
-  background: #5c6bc0;
-  border-color: #5c6bc0;
+.uz-docs-alt-chip:hover {
+  background: #e8f5e9;
+  border-color: #45a049;
+  color: #2e7d32;
+}
+
+/* Action buttons */
+.uz-docs-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+.uz-docs-btn {
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 4px 12px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .12s;
+}
+.uz-docs-btn--accept {
+  background: #45a049;
   color: #fff;
 }
+.uz-docs-btn--accept:hover { background: #2e7d32; }
+.uz-docs-btn--ignore {
+  background: transparent;
+  color: #757575;
+  padding: 4px 8px;
+}
+.uz-docs-btn--ignore:hover { background: #f5f5f5; color: #212121; }

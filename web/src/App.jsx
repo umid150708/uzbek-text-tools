@@ -5,20 +5,30 @@ import { checkText, transliterateText } from './lib/api'
 
 export default function App() {
   // ── State ────────────────────────────────────────────────────────────────
-  const [errors, setErrors] = useState([])
-  const [totalWords, setTotalWords] = useState(0)
-  const [loading, setLoading] = useState(false)
-  const [script, setScript] = useState('latin')   // 'latin' | 'cyrillic'
+  const [errors, setErrors]           = useState([])
+  const [totalWords, setTotalWords]   = useState(0)
+  const [loading, setLoading]         = useState(false)
+  const [script, setScript]           = useState('latin')   // 'latin' | 'cyrillic'
+  const [currentText, setCurrentText] = useState('')
 
-  // Ref to the current plain text — kept in a ref (not state) so we can read
-  // it synchronously inside callbacks without stale-closure problems.
+  // Set of "word:start" keys that the user has clicked "Ignore" on.
+  // Reset on every new check so stale ignores don't persist across edits.
+  const [ignoredKeys, setIgnoredKeys] = useState(new Set())
+
+  // Ref to plain text — synchronous access inside callbacks (no stale closure)
   const currentTextRef = useRef('')
 
-  // Ref to the Editor's imperative API (setText)
+  // Ref to Editor's imperative setText()
   const editorRef = useRef(null)
+
+  // Errors with user-ignored items removed
+  const visibleErrors = errors.filter(
+    (e) => !ignoredKeys.has(`${e.word}:${e.start}`),
+  )
 
   // ── Spell-check helper ───────────────────────────────────────────────────
   const runCheck = useCallback(async (text) => {
+    setIgnoredKeys(new Set())   // clear ignored list whenever we re-check
     if (!text.trim()) {
       setErrors([])
       setTotalWords(0)
@@ -37,30 +47,55 @@ export default function App() {
     }
   }, [])
 
-  // ── Called by Editor 600ms after user stops typing ───────────────────────
+  // ── Called by Editor 600 ms after the user stops typing ─────────────────
   const handleTextChange = useCallback(
     (text) => {
       currentTextRef.current = text
+      setCurrentText(text)
       runCheck(text)
     },
     [runCheck],
   )
 
-  // ── Accept a suggestion (from Editor dropdown OR AnalysisPanel chip) ─────
+  // ── Accept a single suggestion ───────────────────────────────────────────
   const handleAccept = useCallback(
     (suggestion, start, end) => {
-      const text = currentTextRef.current
+      const text    = currentTextRef.current
       const newText = text.slice(0, start) + suggestion + text.slice(end)
       currentTextRef.current = newText
-
-      // Push new text into the editor without triggering onTextChange
+      setCurrentText(newText)
       editorRef.current?.setText(newText)
-
-      // Re-check immediately with the corrected text
       runCheck(newText)
     },
     [runCheck],
   )
+
+  // ── Ignore a single error (hide its card without changing text) ──────────
+  const handleIgnore = useCallback((word, start) => {
+    setIgnoredKeys((prev) => new Set([...prev, `${word}:${start}`]))
+  }, [])
+
+  // ── Accept ALL visible suggestions (apply from last → first) ────────────
+  const handleAcceptAll = useCallback(() => {
+    if (visibleErrors.length === 0) return
+    const text = currentTextRef.current
+
+    // Sort descending by start so earlier offsets stay valid as we splice
+    const sorted = [...visibleErrors]
+      .filter((e) => e.suggestions.length > 0)
+      .sort((a, b) => b.start - a.start)
+
+    let newText = text
+    for (const err of sorted) {
+      newText =
+        newText.slice(0, err.start) + err.suggestions[0] + newText.slice(err.end)
+    }
+
+    currentTextRef.current = newText
+    setCurrentText(newText)
+    editorRef.current?.setText(newText)
+    runCheck(newText)
+  }, [visibleErrors, runCheck])
 
   // ── Transliterate the whole editor content ────────────────────────────────
   const handleToggleScript = useCallback(async () => {
@@ -75,10 +110,10 @@ export default function App() {
     try {
       const result = await transliterateText(text, mode)
       currentTextRef.current = result.converted
+      setCurrentText(result.converted)
       editorRef.current?.setText(result.converted)
       setScript((s) => (s === 'latin' ? 'cyrillic' : 'latin'))
 
-      // Spell-check only makes sense for Latin script
       if (mode === 'cyrillic-to-latin') {
         await runCheck(result.converted)
       } else {
@@ -95,6 +130,7 @@ export default function App() {
   // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div className="app">
+
       {/* ── Top bar ── */}
       <header className="topbar">
         <div className="topbar-brand">
@@ -121,6 +157,7 @@ export default function App() {
 
       {/* ── Main two-panel layout ── */}
       <main className="main">
+
         {/* Left: editor */}
         <section className="editor-panel panel">
           <div className="panel-header">
@@ -131,7 +168,7 @@ export default function App() {
           </div>
           <Editor
             ref={editorRef}
-            errors={script === 'latin' ? errors : []}
+            errors={script === 'latin' ? visibleErrors : []}
             onTextChange={handleTextChange}
             onAccept={handleAccept}
           />
@@ -140,11 +177,14 @@ export default function App() {
         {/* Right: analysis */}
         <AnalysisPanel
           totalWords={totalWords}
-          errorsFound={errors.length}
-          errors={script === 'latin' ? errors : []}
+          errors={script === 'latin' ? visibleErrors : []}
           loading={loading}
           onAccept={handleAccept}
+          onIgnore={handleIgnore}
+          onAcceptAll={handleAcceptAll}
+          currentText={currentText}
         />
+
       </main>
     </div>
   )
