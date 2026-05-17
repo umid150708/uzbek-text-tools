@@ -17,7 +17,36 @@
 'use strict'
 
 const DEBOUNCE_MS  = 600
-const MIN_TEXT_LEN = 3
+const MIN_TEXT_LEN = 10
+
+// ── Language detection ────────────────────────────────────────────────────────
+/**
+ * Returns true when the text is likely Latin-script Uzbek.
+ * Gates every API call so English / Russian / other docs are silently skipped.
+ */
+function isLikelyUzbek(text) {
+  if (!text) return false
+  if (text.replace(/\s/g, '').length < 15) return true   // too short — try anyway
+
+  // Cyrillic → our checker is Latin-only
+  if (/[Ѐ-ӿ]/.test(text)) return false
+
+  const t = text.toLowerCase()
+
+  // o' / g' are near-exclusive to Uzbek Latin orthography
+  if (/[og][''ʻʼ]/.test(t)) return true
+
+  // ≥2 high-frequency Uzbek function words
+  const WORDS = /\b(va|bu|bir|biz|siz|ular|men|sen|bor|ham|lekin|ammo|uchun|bilan|keyin|oldin|emas|chunki|hali|endi|nima|kim|qayda|yerda|qanday|qachon|shunday|bunday)\b/g
+  if ((t.match(WORDS) || []).length >= 2) return true
+
+  // High digraph density relative to word count
+  const words    = (t.match(/\b\w+\b/g) || []).length
+  const digraphs = (t.match(/sh|ch|ng/g) || []).length
+  if (words >= 5 && digraphs / words > 0.35) return true
+
+  return false
+}
 
 // ── Per-field state ──────────────────────────────────────────────────────────
 // WeakMap so entries are GC'd when the field is removed from the DOM.
@@ -149,6 +178,14 @@ function setupContentEditable(el) {
     const text = el.innerText
     if (text.trim().length < MIN_TEXT_LEN) { el.innerHTML = esc(text); state.errors = []; return }
     state.timer = setTimeout(async () => {
+      if (!isLikelyUzbek(text)) {
+        // Not Uzbek — clear any previous underlines silently
+        state.errors = []
+        const offset = getCaretOffset(el)
+        el.innerHTML = esc(text)
+        setCaretOffset(el, offset)
+        return
+      }
       try {
         const res = await callBg({ type: 'CHECK_TEXT', text })
         state.errors = res.errors ?? []
@@ -236,6 +273,11 @@ function setupTextarea(el) {
     ov.innerHTML = ''   // clear old highlights immediately
     if (text.trim().length < MIN_TEXT_LEN) return
     state.timer = setTimeout(async () => {
+      if (!isLikelyUzbek(text)) {
+        state.errors = []
+        ov.innerHTML = ''   // clear underlines — not Uzbek
+        return
+      }
       try {
         const res = await callBg({ type: 'CHECK_TEXT', text })
         state.errors = res.errors ?? []
