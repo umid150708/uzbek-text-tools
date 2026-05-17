@@ -10,16 +10,26 @@ export default function App() {
   const [loading, setLoading]         = useState(false)
   const [script, setScript]           = useState('latin')   // 'latin' | 'cyrillic'
   const [currentText, setCurrentText] = useState('')
-
-  // Set of "word:start" keys that the user has clicked "Ignore" on.
-  // Reset on every new check so stale ignores don't persist across edits.
   const [ignoredKeys, setIgnoredKeys] = useState(new Set())
 
-  // Ref to plain text — synchronous access inside callbacks (no stale closure)
+  // Synchronous plain-text access inside callbacks
   const currentTextRef = useRef('')
-
-  // Ref to Editor's imperative setText()
+  // Editor's imperative setText()
   const editorRef = useRef(null)
+
+  /**
+   * Latin state cache — saved when the user switches Latin→Cyrillic so we can
+   * restore it instantly if they switch back without editing in Cyrillic mode.
+   *
+   * Shape: {
+   *   text:        string,   // Latin plain text
+   *   errors:      Error[],  // API errors for that text
+   *   totalWords:  number,
+   *   ignoredKeys: Set,      // which cards the user dismissed
+   *   cyrillicText: string,  // the Cyrillic version produced at toggle time
+   * }
+   */
+  const latinCacheRef = useRef(null)
 
   // Errors with user-ignored items removed
   const visibleErrors = errors.filter(
@@ -28,7 +38,7 @@ export default function App() {
 
   // ── Spell-check helper ───────────────────────────────────────────────────
   const runCheck = useCallback(async (text) => {
-    setIgnoredKeys(new Set())   // clear ignored list whenever we re-check
+    setIgnoredKeys(new Set())
     if (!text.trim()) {
       setErrors([])
       setTotalWords(0)
@@ -47,11 +57,14 @@ export default function App() {
     }
   }, [])
 
-  // ── Called by Editor 600 ms after the user stops typing ─────────────────
+  // ── Called by Editor 600 ms after the user stops typing ──────────────────
   const handleTextChange = useCallback(
     (text) => {
       currentTextRef.current = text
       setCurrentText(text)
+      // Typing in Latin after a restore → invalidate cache so next toggle
+      // will save fresh state (not the stale restored one)
+      latinCacheRef.current = null
       runCheck(text)
     },
     [runCheck],
@@ -65,67 +78,110 @@ export default function App() {
       currentTextRef.current = newText
       setCurrentText(newText)
       editorRef.current?.setText(newText)
+      latinCacheRef.current = null   // text changed → old cache is stale
       runCheck(newText)
     },
     [runCheck],
   )
 
-  // ── Ignore a single error (hide its card without changing text) ──────────
+  // ── Ignore a single error card ───────────────────────────────────────────
   const handleIgnore = useCallback((word, start) => {
     setIgnoredKeys((prev) => new Set([...prev, `${word}:${start}`]))
   }, [])
 
-  // ── Accept ALL visible suggestions (apply from last → first) ────────────
+  // ── Accept ALL visible suggestions ──────────────────────────────────────
   const handleAcceptAll = useCallback(() => {
     if (visibleErrors.length === 0) return
-    const text = currentTextRef.current
-
-    // Sort descending by start so earlier offsets stay valid as we splice
+    const text   = currentTextRef.current
     const sorted = [...visibleErrors]
       .filter((e) => e.suggestions.length > 0)
       .sort((a, b) => b.start - a.start)
 
     let newText = text
     for (const err of sorted) {
-      newText =
-        newText.slice(0, err.start) + err.suggestions[0] + newText.slice(err.end)
+      newText = newText.slice(0, err.start) + err.suggestions[0] + newText.slice(err.end)
     }
 
     currentTextRef.current = newText
     setCurrentText(newText)
     editorRef.current?.setText(newText)
+    latinCacheRef.current = null
     runCheck(newText)
   }, [visibleErrors, runCheck])
 
-  // ── Transliterate the whole editor content ────────────────────────────────
+  // ── Toggle Latin ↔ Cyrillic with state preservation ──────────────────────
   const handleToggleScript = useCallback(async () => {
     const text = currentTextRef.current
+
+    // ── Empty editor — just flip the label ──
     if (!text.trim()) {
       setScript((s) => (s === 'latin' ? 'cyrillic' : 'latin'))
       return
     }
 
-    const mode = script === 'latin' ? 'latin-to-cyrillic' : 'cyrillic-to-latin'
+    // ── Latin → Cyrillic ─────────────────────────────────────────────────
+    if (script === 'latin') {
+      // Snapshot the full Latin state BEFORE switching
+      latinCacheRef.current = {
+        text,
+        errors,
+        totalWords,
+        ignoredKeys,
+        cyrillicText: null,   // filled after transliteration
+      }
+
+      setLoading(true)
+      try {
+        const result = await transliterateText(text, 'latin-to-cyrillic')
+        // Store the Cyrillic version so we can detect edits later
+        latinCacheRef.current.cyrillicText = result.converted
+
+        currentTextRef.current = result.converted
+        setCurrentText(result.converted)
+        editorRef.current?.setText(result.converted)
+        setScript('cyrillic')
+        setErrors([])        // no error highlighting in Cyrillic mode
+        setTotalWords(0)
+      } catch (err) {
+        console.error('Transliteration failed:', err)
+        latinCacheRef.current = null
+      } finally {
+        setLoading(false)
+      }
+      return
+    }
+
+    // ── Cyrillic → Latin ─────────────────────────────────────────────────
+    const cache = latinCacheRef.current
+
+    if (cache && cache.cyrillicText && text === cache.cyrillicText) {
+      // ── Fast path: user didn't edit in Cyrillic → restore instantly ──
+      currentTextRef.current = cache.text
+      setCurrentText(cache.text)
+      editorRef.current?.setText(cache.text)
+      setErrors(cache.errors)
+      setTotalWords(cache.totalWords)
+      setIgnoredKeys(cache.ignoredKeys)
+      setScript('latin')
+      latinCacheRef.current = null
+      return
+    }
+
+    // ── Slow path: Cyrillic text was edited → re-translate + re-check ──
     setLoading(true)
     try {
-      const result = await transliterateText(text, mode)
+      const result = await transliterateText(text, 'cyrillic-to-latin')
       currentTextRef.current = result.converted
       setCurrentText(result.converted)
       editorRef.current?.setText(result.converted)
-      setScript((s) => (s === 'latin' ? 'cyrillic' : 'latin'))
-
-      if (mode === 'cyrillic-to-latin') {
-        await runCheck(result.converted)
-      } else {
-        setErrors([])
-        setTotalWords(0)
-        setLoading(false)
-      }
+      setScript('latin')
+      latinCacheRef.current = null
+      await runCheck(result.converted)
     } catch (err) {
       console.error('Transliteration failed:', err)
       setLoading(false)
     }
-  }, [script, runCheck])
+  }, [script, errors, totalWords, ignoredKeys, runCheck])
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
