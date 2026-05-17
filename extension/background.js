@@ -11,7 +11,7 @@
  * { type: 'GET_API_BASE' }               → returns the saved API base URL
  */
 
-const DEFAULT_API = 'https://your-api.railway.app'  // ← replace after deploy
+const DEFAULT_API = 'https://uzbek-text-tools-2.onrender.com'
 
 async function getApiBase() {
   const { apiBase } = await chrome.storage.sync.get(['apiBase'])

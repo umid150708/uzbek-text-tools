@@ -1,4 +1,4 @@
-const DEFAULT_API = 'https://your-api.railway.app'
+const DEFAULT_API = 'https://uzbek-text-tools-2.onrender.com'
 
 const urlInput  = document.getElementById('api-url')
 const saveBtn   = document.getElementById('save-btn')
