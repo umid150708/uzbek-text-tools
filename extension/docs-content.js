@@ -24,6 +24,7 @@ let lastErrors    = []
 let lastTotal     = 0
 let pollTimer     = null
 let autoCheckDone = false
+let isFirstCheck  = true
 
 // ── Language detection ────────────────────────────────────────────────────────
 
@@ -358,7 +359,7 @@ function buildHeader(errorCount, totalWords) {
 
   const title = document.createElement('span')
   title.className = 'uz-docs-title'
-  title.innerHTML = "<b>O'z</b>Tekshiruv"
+  title.innerHTML = "<b>O'z</b>Tekshiruv <small style='color:#999;font-size:9px'>v2.2</small>"
   titleRow.appendChild(title)
 
   if (errorCount > 0) {
@@ -613,13 +614,17 @@ function applySequential(list, idx) {
 async function runCheck(text) {
   if (!text || text.length < 3) return
 
-  // Log the first 200 chars so you can inspect in DevTools → Console
-  console.log('[OzTekshiruv] extracted text:', JSON.stringify(text.substring(0, 200)))
+  console.log('[OzTekshiruv] runCheck:', text.length, 'chars, firstCheck:', isFirstCheck)
+  console.log('[OzTekshiruv] text preview:', JSON.stringify(text.substring(0, 200)))
 
-  if (!isLikelyUzbek(text)) {
+  // First check: ALWAYS run the spell checker — skip language detection entirely.
+  // This guarantees detection works on page load. Subsequent re-checks (from typing)
+  // still use isLikelyUzbek to avoid unnecessary API calls.
+  if (!isFirstCheck && !isLikelyUzbek(text)) {
     showNotUzbekSidebar(text)
     return
   }
+  isFirstCheck = false
 
   showLoadingSidebar()
   try {
