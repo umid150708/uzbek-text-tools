@@ -92,7 +92,7 @@ function isLikelyUzbek(text) {
   const FUNC = /\b(va|bu|bir|biz|siz|ular|men|sen|bor|ham|lekin|ammo|uchun|bilan|keyin|oldin|emas|chunki|hali|endi|nima|kim|qanday|qachon|shunday|bunday|agar|faqat|hech|juda|eng|edi|dedi|qildi|keldi|bordi|hamma|har|yana|garchi|shuning|boshladi|bo'ldi)\b/g
   const hits = (t.match(FUNC) || []).length
   if (hits >= 2) return true
-  if (hits >= 1 && sample.length >= 15) return true      // 1 hit in a real sample
+  if (hits >= 1 && n >= 3) return true   // even 1 Uzbek function word in 3+ word text → Uzbek
 
   // Uzbek agglutinative suffixes — extremely distinctive
   if (/\w{3,}(lardan|larga|larida|larning|larini|larni|ishdi|ardi|imiz|ingiz)\b/.test(t)) return true
@@ -102,12 +102,9 @@ function isLikelyUzbek(text) {
   const qCount  = sWords.filter(w => w.includes('q')).length
   if (sWords.length >= 4 && qCount / sWords.length > 0.10) return true
 
-  // Uzbek digraph density
-  const digraphs = (t.match(/sh|ch|ng/g) || []).length
+  // Uzbek digraph density (sh/ch only — "ng" is too common in English "-ing" endings)
+  const digraphs = (t.match(/sh|ch/g) || []).length
   if (sWords.length >= 4 && digraphs / sWords.length > 0.15) return true
-
-  // Catch-all: long non-Cyrillic Latin text in a Google Doc
-  if (text.length > 150 && !/[а-яёА-ЯЁ]/.test(text)) return true
 
   return false
 }
@@ -144,7 +141,7 @@ function readDocsText() {
     const hit = document.elementFromPoint(x, y)
     if (!hit || hit.closest(SKIP) || hit === document.body) continue
     const text = walkUpForText(hit, SKIP, vw)
-    if (text && text.length > 50) return text
+    if (text && text.length > 100) return text
   }
 
   // ── Strategy 2: kix-* innerText scan ──
@@ -579,7 +576,7 @@ async function runCheck(text) {
 function tryAutoCheck() {
   if (autoCheckDone) return
   const text = readDocsText()
-  if (!text || text.length < 10) return
+  if (!text || text.length < 40) return
   autoCheckDone = true
   clearInterval(pollTimer)
   runCheck(text)

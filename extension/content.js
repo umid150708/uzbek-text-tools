@@ -77,7 +77,7 @@ function isLikelyUzbek(text) {
   const FUNC = /\b(va|bu|bir|biz|siz|ular|men|sen|bor|ham|lekin|ammo|uchun|bilan|keyin|oldin|emas|chunki|hali|endi|nima|kim|qanday|qachon|shunday|bunday|agar|faqat|hech|juda|eng|edi|dedi|qildi|keldi|bordi|hamma|har|yana|garchi|shuning|boshladi|bo'ldi)\b/g
   const hits = (t.match(FUNC) || []).length
   if (hits >= 2) return true
-  if (hits >= 1 && sample.length >= 15) return true
+  if (hits >= 1 && n >= 3) return true   // 1 Uzbek function word in 3+ word text → Uzbek
 
   // Uzbek agglutinative suffixes
   if (/\w{3,}(lardan|larga|larida|larning|larini|larni|ishdi|ardi|imiz|ingiz)\b/.test(t)) return true
@@ -87,8 +87,8 @@ function isLikelyUzbek(text) {
   const qCount   = sWords.filter(w => w.includes('q')).length
   if (sWords.length >= 4 && qCount / sWords.length > 0.10) return true
 
-  // Uzbek digraph density
-  const digraphs = (t.match(/sh|ch|ng/g) || []).length
+  // Uzbek digraph density (sh/ch only — "ng" triggers on English "-ing" endings)
+  const digraphs = (t.match(/sh|ch/g) || []).length
   if (sWords.length >= 4 && digraphs / sWords.length > 0.15) return true
 
   return false
