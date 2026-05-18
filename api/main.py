@@ -24,6 +24,7 @@ from __future__ import annotations
 import re
 import sys
 import os
+from contextlib import asynccontextmanager
 
 # Allow running from project root:  python api/main.py
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -37,23 +38,7 @@ from uzbek_text_tools.transliterator import transliterate, transliterate_mixed
 from uzbek_text_tools.tokenizer import _TOKEN_RE, _WORD_START
 
 # ---------------------------------------------------------------------------
-# App + CORS
-# ---------------------------------------------------------------------------
-app = FastAPI(
-    title="uzbek-text-tools API",
-    version="0.2.0",
-    description="Spell-check and transliterate Latin-script Uzbek text.",
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],       # extension calls from any origin
-    allow_methods=["GET", "POST"],
-    allow_headers=["*"],
-)
-
-# ---------------------------------------------------------------------------
-# Lazy-load the spell checker once at startup (not per request)
+# Spell checker singleton — loaded once at startup
 # ---------------------------------------------------------------------------
 _checker = None
 
@@ -65,10 +50,29 @@ def get_spell_checker():
     return _checker
 
 
-@app.on_event("startup")
-async def _preload():
-    """Pre-warm the checker so the first request isn't slow."""
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Pre-warm the spell checker so the first request isn't slow."""
     get_spell_checker()
+    yield
+
+
+# ---------------------------------------------------------------------------
+# App + CORS
+# ---------------------------------------------------------------------------
+app = FastAPI(
+    title="uzbek-text-tools API",
+    version="0.2.0",
+    description="Spell-check and transliterate Latin-script Uzbek text.",
+    lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],       # extension calls from any origin
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
+)
 
 
 # ---------------------------------------------------------------------------

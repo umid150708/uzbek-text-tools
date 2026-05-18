@@ -20,32 +20,76 @@ const DEBOUNCE_MS  = 600
 const MIN_TEXT_LEN = 10
 
 // ── Language detection ────────────────────────────────────────────────────────
+
+/** Pick up to `count` words from `arr` using a random stride for even coverage. */
+function sampleSection(arr, count) {
+  if (arr.length <= count) return arr.slice()
+  const stride = Math.floor(arr.length / count)
+  const offset = Math.floor(Math.random() * stride)
+  const result = []
+  for (let i = offset; result.length < count && i < arr.length; i += stride) {
+    result.push(arr[i])
+  }
+  return result
+}
+
+/** Split `words` into `sections` slices and pick `perSection` words from each. */
+function buildSample(words, sections, perSection) {
+  const result      = []
+  const sectionSize = Math.ceil(words.length / sections)
+  for (let s = 0; s < sections; s++) {
+    const start = s * sectionSize
+    const end   = Math.min(start + sectionSize, words.length)
+    result.push(...sampleSection(words.slice(start, end), perSection))
+  }
+  return result
+}
+
 /**
  * Returns true when the text is likely Latin-script Uzbek.
- * Gates every API call so English / Russian / other docs are silently skipped.
+ * Gates every API call so English / Russian / other pages are silently skipped.
+ *
+ * Sampling strategy (avoids full-document scans):
+ *   ≤ 40 words  → use all words
+ *   41–300 words → 3 sections × 10 words = 30-word sample
+ *   > 300 words  → 5 sections × 12 words = 60-word sample
  */
 function isLikelyUzbek(text) {
   if (!text) return false
-  if (text.replace(/\s/g, '').length < 15) return true   // too short — try anyway
+  if (text.replace(/\s/g, '').length < 15) return true
 
-  // Cyrillic → our checker is Latin-only
-  if (/[Ѐ-ӿ]/.test(text)) return false
+  if (/[Ѐ-ӿ]/.test(text)) return false                    // Cyrillic — skip
 
-  const t = text.toLowerCase()
+  const allWords = text.match(/[a-zA-Z][a-zA-Z'''ʻʼʹ`´]*/g) || []
+  if (allWords.length === 0) return false
 
-  // o' / g' — including U+2019 RIGHT SINGLE QUOTATION MARK (used by Google Docs,
-  // Google Forms, many rich-text editors that auto-correct straight apostrophes)
-  // U+0027 ' | U+2018 ' | U+2019 ' | U+02BB ʻ | U+02BC ʼ
-  if (/[og]['''ʻʼ]/.test(t)) return true
+  const n      = allWords.length
+  const sample = n <= 40  ? allWords
+               : n <= 300 ? buildSample(allWords, 3, 10)
+                           : buildSample(allWords, 5, 12)
 
-  // ≥2 high-frequency Uzbek function words
-  const WORDS = /\b(va|bu|bir|biz|siz|ular|men|sen|bor|ham|lekin|ammo|uchun|bilan|keyin|oldin|emas|chunki|hali|endi|nima|kim|qayda|yerda|qanday|qachon|shunday|bunday|agar|faqat|hech|juda|eng)\b/g
-  if ((t.match(WORDS) || []).length >= 2) return true
+  const t = sample.join(' ').toLowerCase()
+
+  // U+0027 ' | U+2018 ' | U+2019 ' | U+02BB ʻ | U+02BC ʼ | U+02B9 ʹ | ` | ´
+  if (/[og]['''ʻʼʹ`´]/.test(t)) return true
+
+  // High-frequency Uzbek function words
+  const FUNC = /\b(va|bu|bir|biz|siz|ular|men|sen|bor|ham|lekin|ammo|uchun|bilan|keyin|oldin|emas|chunki|hali|endi|nima|kim|qanday|qachon|shunday|bunday|agar|faqat|hech|juda|eng|edi|dedi|qildi|keldi|bordi|hamma|har|yana|garchi|shuning|boshladi|bo'ldi)\b/g
+  const hits = (t.match(FUNC) || []).length
+  if (hits >= 2) return true
+  if (hits >= 1 && sample.length >= 15) return true
+
+  // Uzbek agglutinative suffixes
+  if (/\w{3,}(lardan|larga|larida|larning|larini|larni|ishdi|ardi|imiz|ingiz)\b/.test(t)) return true
+
+  // High 'q' density
+  const sWords   = t.match(/\b[a-z]{2,}\b/g) || []
+  const qCount   = sWords.filter(w => w.includes('q')).length
+  if (sWords.length >= 4 && qCount / sWords.length > 0.10) return true
 
   // Uzbek digraph density
-  const words    = (t.match(/\b\w+\b/g) || []).length
   const digraphs = (t.match(/sh|ch|ng/g) || []).length
-  if (words >= 5 && digraphs / words > 0.3) return true
+  if (sWords.length >= 4 && digraphs / sWords.length > 0.15) return true
 
   return false
 }

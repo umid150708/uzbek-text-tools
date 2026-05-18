@@ -26,22 +26,88 @@ let pollTimer     = null
 let autoCheckDone = false
 
 // ── Language detection ────────────────────────────────────────────────────────
+
+/**
+ * Pick up to `count` words from `arr` using a random stride.
+ * Random start offset gives variety across calls; stride keeps coverage even.
+ */
+function sampleSection(arr, count) {
+  if (arr.length <= count) return arr.slice()
+  const stride  = Math.floor(arr.length / count)
+  const offset  = Math.floor(Math.random() * stride)
+  const result  = []
+  for (let i = offset; result.length < count && i < arr.length; i += stride) {
+    result.push(arr[i])
+  }
+  return result
+}
+
+/**
+ * Divide `words` into `sections` equal slices and pick `perSection` random
+ * words from each, returning one representative sample array.
+ */
+function buildSample(words, sections, perSection) {
+  const result      = []
+  const sectionSize = Math.ceil(words.length / sections)
+  for (let s = 0; s < sections; s++) {
+    const start = s * sectionSize
+    const end   = Math.min(start + sectionSize, words.length)
+    result.push(...sampleSection(words.slice(start, end), perSection))
+  }
+  return result
+}
+
+/**
+ * Returns true when the text is likely Latin-script Uzbek.
+ *
+ * Sampling strategy (avoids scanning huge documents character-by-character):
+ *   ≤ 40 words  → use all words
+ *   41–300 words → 3 sections × 10 words = 30-word sample
+ *   > 300 words  → 5 sections × 12 words = 60-word sample
+ *
+ * Detection runs on the sample, not the raw text.
+ */
 function isLikelyUzbek(text) {
   if (!text) return false
   if (text.replace(/\s/g, '').length < 15) return true
+  if (/[Ѐ-ӿ]/.test(text)) return false                      // Cyrillic — skip
 
-  if (/[Ѐ-ӿ]/.test(text)) return false           // Cyrillic — skip
+  // Apostrophe-aware word extraction (keeps o'/g' intact)
+  const allWords = text.match(/[a-zA-Z][a-zA-Z'''ʻʼʹ`´]*/g) || []
+  if (allWords.length === 0) return false
 
-  const t = text.toLowerCase()
-  // U+0027 | U+2018 | U+2019 (Google Docs default) | U+02BB | U+02BC
-  if (/[og]['''ʻʼ]/.test(t)) return true
+  const n      = allWords.length
+  const sample = n <= 40  ? allWords
+               : n <= 300 ? buildSample(allWords, 3, 10)   // medium text
+                           : buildSample(allWords, 5, 12)   // large text
 
-  const WORDS = /\b(va|bu|bir|biz|siz|ular|men|sen|bor|ham|lekin|ammo|uchun|bilan|keyin|oldin|emas|chunki|hali|endi|nima|kim|qayda|yerda|qanday|qachon|shunday|bunday|agar|faqat|hech|juda|eng)\b/g
-  if ((t.match(WORDS) || []).length >= 2) return true
+  const t = sample.join(' ').toLowerCase()
 
-  const words    = (t.match(/\b\w+\b/g) || []).length
+  // ── Checks on the sample ──────────────────────────────────────────────────
+
+  // U+0027 ' | U+2018 ' | U+2019 ' | U+02BB ʻ | U+02BC ʼ | U+02B9 ʹ | ` | ´
+  if (/[og]['''ʻʼʹ`´]/.test(t)) return true
+
+  // High-frequency Uzbek function words (includes "edi" — very common past copula)
+  const FUNC = /\b(va|bu|bir|biz|siz|ular|men|sen|bor|ham|lekin|ammo|uchun|bilan|keyin|oldin|emas|chunki|hali|endi|nima|kim|qanday|qachon|shunday|bunday|agar|faqat|hech|juda|eng|edi|dedi|qildi|keldi|bordi|hamma|har|yana|garchi|shuning|boshladi|bo'ldi)\b/g
+  const hits = (t.match(FUNC) || []).length
+  if (hits >= 2) return true
+  if (hits >= 1 && sample.length >= 15) return true      // 1 hit in a real sample
+
+  // Uzbek agglutinative suffixes — extremely distinctive
+  if (/\w{3,}(lardan|larga|larida|larning|larini|larni|ishdi|ardi|imiz|ingiz)\b/.test(t)) return true
+
+  // High 'q' density — rare in European languages, common in Uzbek Latin
+  const sWords  = t.match(/\b[a-z]{2,}\b/g) || []
+  const qCount  = sWords.filter(w => w.includes('q')).length
+  if (sWords.length >= 4 && qCount / sWords.length > 0.10) return true
+
+  // Uzbek digraph density
   const digraphs = (t.match(/sh|ch|ng/g) || []).length
-  if (words >= 5 && digraphs / words > 0.3) return true
+  if (sWords.length >= 4 && digraphs / sWords.length > 0.15) return true
+
+  // Catch-all: long non-Cyrillic Latin text in a Google Doc
+  if (text.length > 150 && !/[а-яёА-ЯЁ]/.test(text)) return true
 
   return false
 }
@@ -81,36 +147,79 @@ function readDocsText() {
     if (text && text.length > 50) return text
   }
 
-  // ── Strategy 2: known Google Docs class selectors (legacy fallback) ──
+  // ── Strategy 2: kix-* innerText scan ──
+  // innerText (not textContent) so CSS-hidden accessibility nodes are skipped.
+  // textContent was causing English words from hidden DOM nodes to leak through.
+  try {
+    const kixEls = document.querySelectorAll('[class*="kix-"]')
+    if (kixEls.length) {
+      let best = ''
+      for (const el of kixEls) {
+        if (el.closest(SKIP)) continue
+        const t = el.innerText?.trim()
+        if (t && t.length > best.length) best = t
+      }
+      if (best.length > 50) return best
+    }
+  } catch {}
+
+  // ── Strategy 3: known Google Docs class selectors ──
   const SELECTORS = [
     '.kix-appview-editor', '.kix-page', '.kix-lineview-text-block',
-    '[class*="kix-paragraph"]', '.docs-editor-container',
+    '[class*="kix-paragraph"]', '.docs-editor-container', '.docs-editor',
   ]
   for (const sel of SELECTORS) {
     try {
       const els = document.querySelectorAll(sel)
       if (!els.length) continue
-      const t = (els.length === 1)
-        ? els[0].innerText?.trim()
-        : Array.from(els).map(e => e.textContent).join('\n').trim()
+      const t = Array.from(els).map(e => e.innerText?.trim()).filter(Boolean).join('\n').trim()
       if (t && t.length > 50) return t
     } catch {}
   }
 
-  // ── Strategy 3: ARIA roles ──
-  for (const sel of ['[role="main"]', '[role="document"]', '[role="textbox"]']) {
+  // ── Strategy 4: ARIA roles ──
+  for (const sel of ['[role="main"]', '[role="document"]', '[role="region"]']) {
     const el = document.querySelector(sel)
     if (!el || el.closest(SKIP)) continue
     const t = el.innerText?.trim()
     if (t && t.length > 50) return t
   }
 
+  // ── Strategy 5: vertical column scan ──
+  // Accumulates innerText fragments from many y-positions. innerText only —
+  // no textContent fallback so hidden nodes never pollute the result.
+  try {
+    const seen  = new Set()
+    const parts = []
+    const midX  = vw * 0.40
+    for (let y = vh * 0.12; y < vh * 0.92; y += vh * 0.055) {
+      const hit = document.elementFromPoint(midX, y)
+      if (!hit || hit.closest(SKIP) || hit === document.body) continue
+      let el = hit
+      while (el && el !== document.body) {
+        const rect = el.getBoundingClientRect()
+        if (rect.width > vw * 0.85) break
+        const t = el.innerText?.trim()
+        if (t && t.length > 3 && !seen.has(t)) { seen.add(t); parts.push(t); break }
+        el = el.parentElement
+      }
+    }
+    if (parts.length > 0) {
+      const combined = parts.join(' ')
+      if (combined.length > 50) return combined
+    }
+  } catch {}
+
   return null
 }
 
-/** Walk up from `startEl`, collecting the deepest element whose innerText is
- *  substantial.  Stop when we reach a layout-level container (wider than 80%
- *  of viewport) — past that point, innerText includes toolbar/sidebar junk. */
+/**
+ * Walk up from `startEl` collecting text. Keeps the LARGEST text block found
+ * from elements that are narrower than 92% of the viewport. Stops once a
+ * near-full-width container is reached (those include toolbar / menu junk).
+ * Falls back to textContent when innerText is empty (CSS-hidden accessibility
+ * nodes used by some Google Docs rendering modes).
+ */
 function walkUpForText(startEl, skip, vw) {
   let el = startEl
   let best = null
@@ -119,17 +228,19 @@ function walkUpForText(startEl, skip, vw) {
     if (el.closest(skip)) { el = el.parentElement; continue }
 
     const rect = el.getBoundingClientRect()
-    const t = el.innerText?.trim()
 
-    if (t && t.length > 50) best = t
+    if (rect.width <= vw * 0.92) {
+      // innerText only — textContent leaks hidden accessibility/UI node text
+      const t = el.innerText?.trim()
+      if (t && (!best || t.length > best.length)) best = t
+    }
 
-    // Once the element is as wide as most of the viewport we've exited
-    // the page area and entered a full-width layout container — stop.
-    if (rect.width > vw * 0.85 && best) break
+    // Stop when we hit a nearly-full-width container AND already have text
+    if (rect.width > vw * 0.92 && best && best.length > 100) break
 
     el = el.parentElement
   }
-  return best
+  return best && best.length > 50 ? best : null
 }
 
 // ── Background relay ──────────────────────────────────────────────────────────
@@ -242,7 +353,7 @@ function showLoadingSidebar() {
   ensureFab().style.display = 'none'
 }
 
-function showNotUzbekSidebar() {
+function showNotUzbekSidebar(rawText) {
   const sidebar = getSidebar()
   sidebar.classList.remove('uz-docs-hidden')
   sidebar.innerHTML = ''
@@ -250,7 +361,30 @@ function showNotUzbekSidebar() {
 
   const body = document.createElement('div')
   body.className = 'uz-docs-body'
-  body.innerHTML = `<div class="uz-docs-lang-notice">O'zbek matni aniqlanmadi.<br>Lotin yozuvida o'zbek matni kiriting.</div>`
+
+  const notice = document.createElement('div')
+  notice.className = 'uz-docs-lang-notice'
+  notice.innerHTML = "O'zbek matni aniqlanmadi.<br>Lotin yozuvida o'zbek matni kiriting."
+  body.appendChild(notice)
+
+  // Force-check button so the user can bypass language detection
+  if (rawText) {
+    const btn = document.createElement('button')
+    btn.className   = 'uz-docs-accept-all'
+    btn.textContent = 'Baribir tekshirish'
+    btn.style.marginTop = '12px'
+    btn.onclick = () => {
+      showLoadingSidebar()
+      callBg({ type: 'CHECK_TEXT', text: rawText })
+        .then(res => { ignoredKeys = new Set(); renderSidebar(res.errors ?? [], res.total_words ?? 0) })
+        .catch(err => {
+          const b = getSidebar().querySelector('.uz-docs-body')
+          if (b) b.innerHTML = `<div class="uz-docs-lang-notice">❌ API xatosi: ${err.message}</div>`
+        })
+    }
+    body.appendChild(btn)
+  }
+
   sidebar.appendChild(body)
 }
 
@@ -422,8 +556,11 @@ function applySequential(list, idx) {
 async function runCheck(text) {
   if (!text || text.length < 3) return
 
+  // Log the first 200 chars so you can inspect in DevTools → Console
+  console.log('[OzTekshiruv] extracted text:', JSON.stringify(text.substring(0, 200)))
+
   if (!isLikelyUzbek(text)) {
-    showNotUzbekSidebar()
+    showNotUzbekSidebar(text)
     return
   }
 
