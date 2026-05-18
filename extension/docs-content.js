@@ -22,6 +22,7 @@ let fabEl         = null          // floating re-open tab
 let ignoredKeys   = new Set()
 let lastErrors    = []
 let lastTotal     = 0
+let lastExtracted = ''
 let pollTimer     = null
 let autoCheckDone = false
 let isFirstCheck  = true
@@ -157,7 +158,146 @@ function readDocsText() {
 
   console.log('[OzTekshiruv] readDocsText() called, vw:', vw, 'vh:', vh)
 
-  // ── Strategy 1: hit-test the document page ──
+  // Helper: strip toolbar/menu text that leaks into textContent extractions
+  function cleanDocText(raw) {
+    if (!raw) return ''
+    // Remove common Google Docs UI text that gets mixed in
+    return raw
+      .replace(/^(File|Edit|View|Insert|Format|Tools|Extensions|Help|Accessibility)\s*/gm, '')
+      .replace(/^(Menus|Main toolbar|Last edit was .*)$/gm, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
+  }
+
+  // Helper: check if text looks like document content (not just toolbar noise)
+  function isDocContent(text) {
+    if (!text || text.length < 20) return false
+    const words = text.match(/[a-zA-Z]{2,}/g) || []
+    if (words.length < 3) return false
+    // If >80% of words are common English UI words, it's toolbar text
+    const UI_WORDS = /^(file|edit|view|insert|format|tools|extensions|help|undo|redo|print|share|new|open|save|cut|copy|paste|zoom|find|replace|menu|toolbar|accessibility|normal|text|heading|font|bold|italic|underline|align|left|right|center|table|image|link|comment|numbered|bulleted|list|paragraph|spacing|columns|page|break|margins|headers|footers)$/i
+    const uiCount = words.filter(w => UI_WORDS.test(w)).length
+    return uiCount / words.length < 0.5
+  }
+
+  // ── Strategy 0: page-context script with multiple extraction methods ──
+  // Injected script runs in PAGE world where Google Docs' JS model lives.
+  try {
+    const id = 'uz-extracted-' + Date.now()
+    const script = document.createElement('script')
+    script.textContent = `(function(){
+      try {
+        var results = {};
+        // Method A: aria-label attributes in editor area (accessibility text)
+        var ariaEls = document.querySelectorAll('.kix-appview-editor [aria-label]');
+        if (ariaEls.length) {
+          var labels = [];
+          for (var i = 0; i < ariaEls.length; i++) {
+            var lbl = ariaEls[i].getAttribute('aria-label');
+            if (lbl && lbl.length > 1) labels.push(lbl);
+          }
+          if (labels.length) results.ariaLabels = labels.join(' ');
+        }
+
+        // Method B: textContent on kix-page elements (hidden accessibility spans)
+        var pages = document.querySelectorAll('.kix-page, .kix-page-content-wrapper, [data-page-index]');
+        if (pages.length) {
+          var pt = '';
+          for (var i = 0; i < pages.length; i++) pt += ' ' + (pages[i].textContent || '');
+          results.pageText = pt.trim();
+        }
+
+        // Method C: innerText from editor selectors (works in non-canvas mode)
+        var sels = ['.kix-appview-editor', '.kix-page', '[role="textbox"]', '[role="main"]'];
+        for (var i = 0; i < sels.length; i++) {
+          var el = document.querySelector(sels[i]);
+          if (el) {
+            var s = (el.innerText || '').trim();
+            if (s.length > 20) { results.innerText = s; break; }
+          }
+        }
+
+        // Method D: TreeWalker for text nodes inside editor
+        var editor = document.querySelector('.kix-appview-editor') ||
+                     document.querySelector('[role="main"]');
+        if (editor) {
+          var walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+          var parts = [], seen = {};
+          var node;
+          while ((node = walker.nextNode())) {
+            var t = (node.textContent || '').trim();
+            if (t.length > 1 && !seen[t]) { seen[t] = 1; parts.push(t); }
+          }
+          if (parts.length) results.treeWalker = parts.join(' ');
+        }
+
+        // Method E: body textContent as last resort
+        results.bodyText = (document.body.textContent || '').trim().substring(0, 5000);
+
+        // Pick the best result: prefer aria labels, then page text, then innerText
+        var best = '';
+        var source = 'none';
+        var candidates = [
+          ['ariaLabels', results.ariaLabels],
+          ['pageText', results.pageText],
+          ['treeWalker', results.treeWalker],
+          ['innerText', results.innerText],
+          ['bodyText', results.bodyText]
+        ];
+        for (var i = 0; i < candidates.length; i++) {
+          var val = (candidates[i][1] || '').trim();
+          if (val.length > best.length) { best = val; source = candidates[i][0]; }
+        }
+
+        // Store diagnostic info
+        var diag = {};
+        for (var k in results) diag[k] = (results[k] || '').length;
+        diag.source = source;
+        diag.preview = best.substring(0, 200);
+        document.documentElement.setAttribute('${id}', JSON.stringify({text: best.substring(0, 10000), diag: diag}));
+      } catch(e) {
+        document.documentElement.setAttribute('${id}', JSON.stringify({text:'', diag:{error: e.message}}));
+      }
+    })()`;
+    document.documentElement.appendChild(script)
+    script.remove()
+    const raw = document.documentElement.getAttribute(id) || '{}'
+    document.documentElement.removeAttribute(id)
+    try {
+      const parsed = JSON.parse(raw)
+      const text = cleanDocText(parsed.text || '')
+      console.log('[OzTekshiruv] Strategy 0 diag:', JSON.stringify(parsed.diag))
+      console.log('[OzTekshiruv] Strategy 0 cleaned text:', text.length, 'chars:', JSON.stringify(text.substring(0, 150)))
+      if (text && text.length > 20 && isDocContent(text)) {
+        console.log('[OzTekshiruv] Strategy 0 SUCCESS via', parsed.diag?.source)
+        return text
+      }
+    } catch {}
+  } catch (e) { console.log('[OzTekshiruv] Strategy 0 error:', e.message) }
+
+  // ── Strategy 1: aria-label scan in content script world ──
+  try {
+    const ariaEls = document.querySelectorAll('[aria-label]')
+    const labels = []
+    for (const el of ariaEls) {
+      if (el.closest(SKIP)) continue
+      // Skip toolbar/menu aria-labels (usually short, single-word)
+      const lbl = el.getAttribute('aria-label')
+      if (lbl && lbl.length > 3 && !/^(Bold|Italic|Underline|Strikethrough|Font|Size|Color|Align|Indent|Line|More|Undo|Redo|Print|Paint|Insert|Normal|Heading|Title|Subtitle|Menu|Close|Open|Format|Text|Zoom|Share|Comments?|Reply|Spelling|Accept|Reject|Find|Replace|All)$/i.test(lbl)) {
+        labels.push(lbl)
+      }
+    }
+    if (labels.length > 0) {
+      const text = cleanDocText(labels.join(' '))
+      if (text.length > 20 && isDocContent(text)) {
+        console.log('[OzTekshiruv] Strategy 1 (aria-labels) →', text.length, 'chars from', labels.length, 'labels')
+        return text
+      }
+    }
+  } catch {}
+  console.log('[OzTekshiruv] Strategy 1 (aria-labels) failed')
+
+  // ── Strategy 2: hit-test the document page ──
   const probePoints = [
     [vw * 0.35, vh * 0.45],
     [vw * 0.35, vh * 0.65],
@@ -171,115 +311,18 @@ function readDocsText() {
     if (!hit || hit.closest(SKIP) || hit === document.body) continue
     const text = walkUpForText(hit, SKIP, vw)
     if (text && text.length > 50) {
-      console.log('[OzTekshiruv] Strategy 1 hit at', Math.round(x), Math.round(y), '→', text.length, 'chars')
+      console.log('[OzTekshiruv] Strategy 2 hit at', Math.round(x), Math.round(y), '→', text.length, 'chars')
       return text
     }
   }
-  console.log('[OzTekshiruv] Strategy 1 failed')
+  console.log('[OzTekshiruv] Strategy 2 (hit-test) failed')
 
-  // ── Strategy 2: kix-* innerText scan ──
-  try {
-    const kixEls = document.querySelectorAll('[class*="kix-"]')
-    console.log('[OzTekshiruv] Strategy 2: found', kixEls.length, 'kix-* elements')
-    if (kixEls.length) {
-      let best = ''
-      for (const el of kixEls) {
-        if (el.closest(SKIP)) continue
-        const t = el.innerText?.trim()
-        if (t && t.length > best.length) best = t
-      }
-      if (best.length > 30) {
-        console.log('[OzTekshiruv] Strategy 2 →', best.length, 'chars:', JSON.stringify(best.substring(0, 80)))
-        return best
-      }
-    }
-  } catch {}
-  console.log('[OzTekshiruv] Strategy 2 failed')
-
-  // ── Strategy 3: known Google Docs class selectors ──
-  const SELECTORS = [
-    '.kix-appview-editor', '.kix-page', '.kix-lineview-text-block',
-    '[class*="kix-paragraph"]', '.docs-editor-container', '.docs-editor',
-  ]
-  for (const sel of SELECTORS) {
-    try {
-      const els = document.querySelectorAll(sel)
-      if (!els.length) continue
-      const t = Array.from(els).map(e => e.innerText?.trim()).filter(Boolean).join('\n').trim()
-      if (t && t.length > 30) {
-        console.log('[OzTekshiruv] Strategy 3 (' + sel + ') →', t.length, 'chars')
-        return t
-      }
-    } catch {}
-  }
-  console.log('[OzTekshiruv] Strategy 3 failed')
-
-  // ── Strategy 4: ARIA roles ──
-  for (const sel of ['[role="main"]', '[role="document"]', '[role="region"]']) {
-    const el = document.querySelector(sel)
-    if (!el || el.closest(SKIP)) continue
-    const t = el.innerText?.trim()
-    if (t && t.length > 30) {
-      console.log('[OzTekshiruv] Strategy 4 (' + sel + ') →', t.length, 'chars')
-      return t
-    }
-  }
-  console.log('[OzTekshiruv] Strategy 4 failed')
-
-  // ── Strategy 5: vertical column scan ──
-  try {
-    const seen  = new Set()
-    const parts = []
-    const midX  = vw * 0.40
-    for (let y = vh * 0.12; y < vh * 0.92; y += vh * 0.055) {
-      const hit = document.elementFromPoint(midX, y)
-      if (!hit || hit.closest(SKIP) || hit === document.body) continue
-      let el = hit
-      while (el && el !== document.body) {
-        const rect = el.getBoundingClientRect()
-        if (rect.width > vw * 0.85) break
-        const t = el.innerText?.trim()
-        if (t && t.length > 3 && !seen.has(t)) { seen.add(t); parts.push(t); break }
-        el = el.parentElement
-      }
-    }
-    if (parts.length > 0) {
-      const combined = parts.join(' ')
-      if (combined.length > 30) {
-        console.log('[OzTekshiruv] Strategy 5 →', combined.length, 'chars from', parts.length, 'fragments')
-        return combined
-      }
-    }
-  } catch {}
-  console.log('[OzTekshiruv] Strategy 5 failed')
-
-  // ── Strategy 6: brute-force innerText ──
-  try {
-    const docArea = document.querySelector('.kix-appview-editor') ||
-                    document.querySelector('[role="main"]') ||
-                    document.querySelector('.docs-editor-container')
-    if (docArea) {
-      const t = docArea.innerText?.trim()
-      if (t && t.length > 20) {
-        console.log('[OzTekshiruv] Strategy 6 (brute-force innerText) →', t.length, 'chars')
-        return t
-      }
-    }
-  } catch {}
-  console.log('[OzTekshiruv] Strategy 6 failed')
-
-  // ── Strategy 7: textContent on narrow page containers ──
-  // Canvas-mode Google Docs renders text on <canvas> elements. The actual text
-  // lives in hidden accessibility nodes (clip:rect, height:1px, etc.) that
-  // innerText ignores. textContent reads them. We use the NARROWEST container
-  // possible (.kix-page, [data-page-index]) to avoid picking up toolbar/menu text.
+  // ── Strategy 3: textContent on page containers ──
   const TC_SELECTORS = [
     '.kix-page-content-wrapper',
     '.kix-page',
     '[data-page-index]',
     '.kix-appview-editor',
-    '[role="document"]',
-    '[role="main"]',
   ]
   for (const sel of TC_SELECTORS) {
     try {
@@ -291,35 +334,50 @@ function readDocsText() {
         const t = el.textContent?.trim()
         if (t) combined += (combined ? '\n' : '') + t
       }
-      if (combined.length > 30) {
-        console.log('[OzTekshiruv] Strategy 7 textContent (' + sel + ') →', combined.length, 'chars:', JSON.stringify(combined.substring(0, 100)))
-        return combined
+      const cleaned = cleanDocText(combined)
+      if (cleaned.length > 30 && isDocContent(cleaned)) {
+        console.log('[OzTekshiruv] Strategy 3 textContent (' + sel + ') →', cleaned.length, 'chars')
+        return cleaned
       }
     } catch {}
   }
-  console.log('[OzTekshiruv] Strategy 7 failed')
+  console.log('[OzTekshiruv] Strategy 3 (textContent containers) failed')
 
-  // ── Strategy 8: TreeWalker on the entire body — last resort ──
-  // Collect all text nodes, skip our sidebar and very short fragments.
+  // ── Strategy 4: TreeWalker collecting all text nodes ──
   try {
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+    const editor = document.querySelector('.kix-appview-editor') ||
+                   document.querySelector('[role="main"]') ||
+                   document.querySelector('.docs-editor-container')
+    const root = editor || document.body
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
     const parts = []
     const seen  = new Set()
     let node
     while ((node = walker.nextNode())) {
       if (node.parentElement?.closest(SKIP)) continue
       const t = node.textContent?.trim()
-      if (t && t.length > 2 && !seen.has(t)) {
+      if (t && t.length > 1 && !seen.has(t)) {
         seen.add(t)
         parts.push(t)
       }
     }
     if (parts.length > 0) {
-      const combined = parts.join(' ')
-      if (combined.length > 30) {
-        console.log('[OzTekshiruv] Strategy 8 TreeWalker →', combined.length, 'chars from', parts.length, 'text nodes')
+      const combined = cleanDocText(parts.join(' '))
+      if (combined.length > 30 && isDocContent(combined)) {
+        console.log('[OzTekshiruv] Strategy 4 TreeWalker →', combined.length, 'chars from', parts.length, 'nodes')
         return combined
       }
+    }
+  } catch {}
+  console.log('[OzTekshiruv] Strategy 4 (TreeWalker) failed')
+
+  // ── Strategy 5: brute-force — body textContent with aggressive cleaning ──
+  try {
+    const raw = document.body.textContent?.trim()
+    if (raw && raw.length > 50) {
+      const cleaned = cleanDocText(raw)
+      console.log('[OzTekshiruv] Strategy 5 (body textContent) →', cleaned.length, 'chars')
+      if (cleaned.length > 20) return cleaned
     }
   } catch {}
 
@@ -344,12 +402,10 @@ function walkUpForText(startEl, skip, vw) {
     const rect = el.getBoundingClientRect()
 
     if (rect.width <= vw * 0.92) {
-      // innerText only — textContent leaks hidden accessibility/UI node text
-      const t = el.innerText?.trim()
+      const t = (el.innerText?.trim()) || (el.textContent?.trim())
       if (t && (!best || t.length > best.length)) best = t
     }
 
-    // Stop when we hit a nearly-full-width container AND already have text
     if (rect.width > vw * 0.92 && best && best.length > 100) break
 
     el = el.parentElement
@@ -415,7 +471,7 @@ function buildHeader(errorCount, totalWords) {
 
   const title = document.createElement('span')
   title.className = 'uz-docs-title'
-  title.innerHTML = "<b>O'z</b>Tekshiruv <small style='color:#999;font-size:9px'>v2.3</small>"
+  title.innerHTML = "<b>O'z</b>Tekshiruv <small style='color:#999;font-size:9px'>v2.4</small>"
   titleRow.appendChild(title)
 
   if (errorCount > 0) {
@@ -527,8 +583,17 @@ function renderSidebar(errors, totalWords) {
   if (visible.length === 0) {
     const ok = document.createElement('div')
     ok.className   = 'uz-docs-clear'
-    ok.textContent = '✓ Xatolar topilmadi'
+    ok.textContent = totalWords > 0 ? '✓ Xatolar topilmadi' : 'Matn olinmadi — sahifani yangilang'
     body.appendChild(ok)
+
+    if (totalWords === 0) {
+      const diag = document.createElement('div')
+      diag.style.cssText = 'margin-top:12px;padding:8px;background:#fff3cd;border-radius:6px;font-size:11px;color:#856404;word-break:break-all;max-height:120px;overflow-y:auto'
+      diag.textContent = lastExtracted
+        ? 'Olingan matn (' + lastExtracted.length + ' belgi): ' + lastExtracted.substring(0, 300)
+        : 'Matn olib bo\'lmadi — Google Docs canvas rejimida'
+      body.appendChild(diag)
+    }
   } else {
     visible.forEach((err) => {
       const origIdx = errors.indexOf(err)
@@ -669,6 +734,7 @@ function applySequential(list, idx) {
 // ── Core check ────────────────────────────────────────────────────────────────
 async function runCheck(text) {
   if (!text || text.length < 3) return
+  lastExtracted = text
 
   console.log('[OzTekshiruv] runCheck:', text.length, 'chars, firstCheck:', isFirstCheck)
   console.log('[OzTekshiruv] text preview:', JSON.stringify(text.substring(0, 200)))
@@ -705,7 +771,7 @@ function tryAutoCheck() {
 }
 
 // ── Boot: show sidebar immediately, then find text ────────────────────────────
-console.log('[OzTekshiruv] docs-content.js v2.3 loaded')
+console.log('[OzTekshiruv] docs-content.js v2.4 loaded')
 showLoadingSidebar()           // ← sidebar visible from the very first frame
 ensureFab()                    // ← FAB exists but hidden (sidebar is open)
 
