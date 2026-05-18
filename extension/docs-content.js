@@ -733,15 +733,15 @@ function applySequential(list, idx) {
 
 // ── Core check ────────────────────────────────────────────────────────────────
 async function runCheck(text) {
-  if (!text || text.length < 3) return
+  if (!text || text.trim().length < 3) return
+
+  // Sanitize and truncate to API limit (max_length=10000)
+  text = text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '').trim().substring(0, 9500)
   lastExtracted = text
 
   console.log('[OzTekshiruv] runCheck:', text.length, 'chars, firstCheck:', isFirstCheck)
   console.log('[OzTekshiruv] text preview:', JSON.stringify(text.substring(0, 200)))
 
-  // First check: ALWAYS run the spell checker — skip language detection entirely.
-  // This guarantees detection works on page load. Subsequent re-checks (from typing)
-  // still use isLikelyUzbek to avoid unnecessary API calls.
   if (!isFirstCheck && !isLikelyUzbek(text)) {
     showNotUzbekSidebar(text)
     return
@@ -755,7 +755,14 @@ async function runCheck(text) {
     renderSidebar(res.errors ?? [], res.total_words ?? 0)
   } catch (err) {
     const body = getSidebar().querySelector('.uz-docs-body')
-    if (body) body.innerHTML = `<div class="uz-docs-lang-notice">❌ API xatosi: ${err.message}</div>`
+    if (body) {
+      body.innerHTML = `<div class="uz-docs-lang-notice">❌ API xatosi: ${err.message}</div>`
+      // Show extracted text for debugging
+      const diag = document.createElement('div')
+      diag.style.cssText = 'margin-top:12px;padding:8px;background:#fff3cd;border-radius:6px;font-size:11px;color:#856404;word-break:break-all;max-height:120px;overflow-y:auto'
+      diag.textContent = 'Yuborilgan matn (' + text.length + ' belgi): ' + text.substring(0, 300)
+      body.appendChild(diag)
+    }
   }
 }
 
