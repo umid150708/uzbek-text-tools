@@ -253,7 +253,7 @@ function readDocsText() {
   } catch {}
   console.log('[OzTekshiruv] Strategy 5 failed')
 
-  // ── Strategy 6: brute-force scan of ALL divs in the document area ──
+  // ── Strategy 6: brute-force innerText ──
   try {
     const docArea = document.querySelector('.kix-appview-editor') ||
                     document.querySelector('[role="main"]') ||
@@ -261,8 +261,64 @@ function readDocsText() {
     if (docArea) {
       const t = docArea.innerText?.trim()
       if (t && t.length > 20) {
-        console.log('[OzTekshiruv] Strategy 6 (brute-force) →', t.length, 'chars')
+        console.log('[OzTekshiruv] Strategy 6 (brute-force innerText) →', t.length, 'chars')
         return t
+      }
+    }
+  } catch {}
+  console.log('[OzTekshiruv] Strategy 6 failed')
+
+  // ── Strategy 7: textContent on narrow page containers ──
+  // Canvas-mode Google Docs renders text on <canvas> elements. The actual text
+  // lives in hidden accessibility nodes (clip:rect, height:1px, etc.) that
+  // innerText ignores. textContent reads them. We use the NARROWEST container
+  // possible (.kix-page, [data-page-index]) to avoid picking up toolbar/menu text.
+  const TC_SELECTORS = [
+    '.kix-page-content-wrapper',
+    '.kix-page',
+    '[data-page-index]',
+    '.kix-appview-editor',
+    '[role="document"]',
+    '[role="main"]',
+  ]
+  for (const sel of TC_SELECTORS) {
+    try {
+      const els = document.querySelectorAll(sel)
+      if (!els.length) continue
+      let combined = ''
+      for (const el of els) {
+        if (el.closest(SKIP)) continue
+        const t = el.textContent?.trim()
+        if (t) combined += (combined ? '\n' : '') + t
+      }
+      if (combined.length > 30) {
+        console.log('[OzTekshiruv] Strategy 7 textContent (' + sel + ') →', combined.length, 'chars:', JSON.stringify(combined.substring(0, 100)))
+        return combined
+      }
+    } catch {}
+  }
+  console.log('[OzTekshiruv] Strategy 7 failed')
+
+  // ── Strategy 8: TreeWalker on the entire body — last resort ──
+  // Collect all text nodes, skip our sidebar and very short fragments.
+  try {
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+    const parts = []
+    const seen  = new Set()
+    let node
+    while ((node = walker.nextNode())) {
+      if (node.parentElement?.closest(SKIP)) continue
+      const t = node.textContent?.trim()
+      if (t && t.length > 2 && !seen.has(t)) {
+        seen.add(t)
+        parts.push(t)
+      }
+    }
+    if (parts.length > 0) {
+      const combined = parts.join(' ')
+      if (combined.length > 30) {
+        console.log('[OzTekshiruv] Strategy 8 TreeWalker →', combined.length, 'chars from', parts.length, 'text nodes')
+        return combined
       }
     }
   } catch {}
@@ -359,7 +415,7 @@ function buildHeader(errorCount, totalWords) {
 
   const title = document.createElement('span')
   title.className = 'uz-docs-title'
-  title.innerHTML = "<b>O'z</b>Tekshiruv <small style='color:#999;font-size:9px'>v2.2</small>"
+  title.innerHTML = "<b>O'z</b>Tekshiruv <small style='color:#999;font-size:9px'>v2.3</small>"
   titleRow.appendChild(title)
 
   if (errorCount > 0) {
@@ -649,7 +705,7 @@ function tryAutoCheck() {
 }
 
 // ── Boot: show sidebar immediately, then find text ────────────────────────────
-console.log('[OzTekshiruv] docs-content.js v2.2 loaded')
+console.log('[OzTekshiruv] docs-content.js v2.3 loaded')
 showLoadingSidebar()           // ← sidebar visible from the very first frame
 ensureFab()                    // ← FAB exists but hidden (sidebar is open)
 
