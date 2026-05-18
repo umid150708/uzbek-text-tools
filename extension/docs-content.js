@@ -47,32 +47,79 @@ function isLikelyUzbek(text) {
 }
 
 // ── Read document text ────────────────────────────────────────────────────────
+/**
+ * Extracts document text from Google Docs.
+ *
+ * Google periodically renames internal CSS classes (kix-lineview-text-block,
+ * kix-wordhtmlgenerator-word-node, etc.), breaking class-based selectors.
+ *
+ * This version prioritises ATTRIBUTE-BASED selectors that depend on HTML
+ * standards (contenteditable, role, aria-*) rather than on Googleʼs internal
+ * class naming — making it survive across Docs versions.
+ */
 function readDocsText() {
-  const blocks = document.querySelectorAll('.kix-lineview-text-block')
-  if (blocks.length > 0) {
-    const t = Array.from(blocks).map(b => b.textContent).join('\n').trim()
-    if (t.length > 5) return t
+  // ── Strategy 1: contenteditable surfaces (most robust) ──
+  // The Docs editor MUST have contenteditable="true" for the user to type.
+  // Pick the largest one (skip tiny toolbar widgets).
+  const editables = document.querySelectorAll('[contenteditable="true"]')
+  let bestText = ''
+  for (const el of editables) {
+    const rect = el.getBoundingClientRect()
+    if (rect.width < 200 || rect.height < 100) continue      // too small
+    const t = el.innerText?.trim()
+    if (t && t.length > bestText.length) bestText = t
   }
-  const wordNodes = document.querySelectorAll('.kix-wordhtmlgenerator-word-node')
-  if (wordNodes.length > 0) {
-    const t = Array.from(wordNodes).map(w => w.textContent).join('').trim()
-    if (t.length > 5) return t
+  if (bestText.length > 10) return bestText
+
+  // ── Strategy 2: ARIA textbox role ──
+  const textboxes = document.querySelectorAll('[role="textbox"]')
+  for (const el of textboxes) {
+    const t = el.innerText?.trim()
+    if (t && t.length > 10) return t
   }
-  const paras = document.querySelectorAll('[class*="kix-paragraph"]')
-  if (paras.length > 0) {
-    const t = Array.from(paras).map(p => p.textContent).join('\n').trim()
-    if (t.length > 5) return t
+
+  // ── Strategy 3: known Google Docs class names (may break across versions) ──
+  const CLASS_SELECTORS = [
+    '.kix-lineview-text-block',
+    '.kix-wordhtmlgenerator-word-node',
+    '[class*="kix-lineview"]',
+    '[class*="kix-paragraph"]',
+    '.kix-appview-editor',
+    '.kix-page',
+    '.docs-editor-container',
+  ]
+  for (const sel of CLASS_SELECTORS) {
+    try {
+      const els = document.querySelectorAll(sel)
+      if (els.length === 0) continue
+      if (els.length === 1) {
+        const t = els[0].innerText?.trim()
+        if (t && t.length > 10) return t
+      } else {
+        const t = Array.from(els).map(el => el.textContent).join('\n').trim()
+        if (t.length > 10) return t
+      }
+    } catch { /* invalid selector guard */ }
   }
-  const editor = document.querySelector('.kix-appview-editor, .docs-editor-container')
-  if (editor) {
-    const t = editor.innerText?.trim()
-    if (t && t.length > 5) return t
+
+  // ── Strategy 4: any element whose class contains "editor" ──
+  const editorEls = document.querySelectorAll('[class*="editor"]')
+  for (const el of editorEls) {
+    const rect = el.getBoundingClientRect()
+    if (rect.width < 300 || rect.height < 200) continue
+    const t = el.innerText?.trim()
+    if (t && t.length > 10) return t
   }
+
+  // ── Strategy 5: iframe fallback ──
   try {
-    const iframe = document.querySelector('.docs-texteventtarget-iframe')
-    const t = iframe?.contentDocument?.body?.innerText?.trim()
-    if (t && t.length > 5) return t
+    const iframes = document.querySelectorAll('iframe')
+    for (const iframe of iframes) {
+      const t = iframe.contentDocument?.body?.innerText?.trim()
+      if (t && t.length > 10) return t
+    }
   } catch {}
+
   return null
 }
 
