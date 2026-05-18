@@ -1,21 +1,14 @@
 /**
  * docs-content.js  —  Google Docs content script
  *
- * Key fixes vs previous version
- * ──────────────────────────────
- * 1. isLikelyUzbek() — Google Docs auto-converts straight apostrophes to
- *    curly RIGHT SINGLE QUOTATION MARK (U+2019).  The old regex only checked
- *    for basic ASCII `'` so it ALWAYS returned false for real Docs text.
- *    Now uses explicit Unicode escapes for all variants.
- *
- * 2. readDocsText() — tries 5 selectors in order of reliability so we
- *    survive across Google Docs DOM versions.
- *
- * 3. Auto-trigger uses setInterval polling (200 ms) in addition to
- *    MutationObserver + timeout fallbacks — handles the async Docs loader
- *    without relying on observer firing at exactly the right moment.
- *
- * 4. Handles CHECK_NOW message from the popup's "Hozir tekshirish" button.
+ * Behaviour
+ * ──────────
+ * • Sidebar appears IMMEDIATELY when the page loads — never waits for a check.
+ * • Initial state: spinner ("Tekshirilmoqda…") while polling for document text.
+ * • Once text is found and checked, sidebar fills with error cards.
+ * • Close (✕) hides the sidebar and shows a small "OʻZ" tab on the right edge.
+ * • Clicking that tab re-opens the sidebar.
+ * • "Hozir tekshirish" popup button also forces a fresh check and re-opens.
  */
 
 'use strict'
@@ -23,47 +16,29 @@
 const DEBOUNCE_MS = 900
 
 // ── State ─────────────────────────────────────────────────────────────────────
-let debounceTimer  = null
-let sidebarEl      = null
-let ignoredKeys    = new Set()
-let lastErrors     = []
-let lastTotal      = 0
-let autoCheckDone  = false
-let pollTimer      = null
+let debounceTimer = null
+let sidebarEl     = null
+let fabEl         = null          // floating re-open tab
+let ignoredKeys   = new Set()
+let lastErrors    = []
+let lastTotal     = 0
+let pollTimer     = null
+let autoCheckDone = false
 
 // ── Language detection ────────────────────────────────────────────────────────
-/**
- * Returns true when text is likely Latin-script Uzbek.
- *
- * BUG FIXED: Google Docs auto-converts `'` (U+0027) to `'` (U+2019 RIGHT
- * SINGLE QUOTATION MARK).  Previous regex missed U+2019 entirely so every
- * real Google Docs file scored 0 and the check was silently skipped.
- *
- * Apostrophe variants handled:
- *   U+0027  APOSTROPHE                  (keyboard / plain text)
- *   U+2018  LEFT SINGLE QUOTATION MARK  (rare)
- *   U+2019  RIGHT SINGLE QUOTATION MARK (Google Docs default!) ← was missing
- *   U+02BB  MODIFIER LETTER TURNED COMMA
- *   U+02BC  MODIFIER LETTER APOSTROPHE
- */
 function isLikelyUzbek(text) {
   if (!text) return false
-  if (text.replace(/\s/g, '').length < 15) return true  // too short — try anyway
+  if (text.replace(/\s/g, '').length < 15) return true
 
-  // Cyrillic → our checker is Latin-only
-  if (/[Ѐ-ӿ]/.test(text)) return false
+  if (/[Ѐ-ӿ]/.test(text)) return false           // Cyrillic — skip
 
   const t = text.toLowerCase()
+  // U+0027 | U+2018 | U+2019 (Google Docs default) | U+02BB | U+02BC
+  if (/[og]['''ʻʼ]/.test(t)) return true
 
-  // o’ / g’ in ANY apostrophe variant — including Google Docs curly quotes
-  // U+0027 ‘ | U+2018 ‘ | U+2019 ‘ | U+02BB ʻ | U+02BC ʼ
-  if (/[og][‘‘’ʻʼ]/.test(t)) return true
-
-  // ≥2 high-frequency Uzbek function words
   const WORDS = /\b(va|bu|bir|biz|siz|ular|men|sen|bor|ham|lekin|ammo|uchun|bilan|keyin|oldin|emas|chunki|hali|endi|nima|kim|qayda|yerda|qanday|qachon|shunday|bunday|agar|faqat|hech|juda|eng)\b/g
   if ((t.match(WORDS) || []).length >= 2) return true
 
-  // Uzbek digraph density
   const words    = (t.match(/\b\w+\b/g) || []).length
   const digraphs = (t.match(/sh|ch|ng/g) || []).length
   if (words >= 5 && digraphs / words > 0.3) return true
@@ -72,46 +47,32 @@ function isLikelyUzbek(text) {
 }
 
 // ── Read document text ────────────────────────────────────────────────────────
-/**
- * Tries five strategies in order of precision.
- * Returns the best non-empty result, or null if the editor hasn't loaded yet.
- */
 function readDocsText() {
-  // 1. Individual text blocks (screen-reader accessibility nodes)
   const blocks = document.querySelectorAll('.kix-lineview-text-block')
   if (blocks.length > 0) {
     const t = Array.from(blocks).map(b => b.textContent).join('\n').trim()
     if (t.length > 5) return t
   }
-
-  // 2. Word-level nodes (finer granularity, available in most Docs versions)
   const wordNodes = document.querySelectorAll('.kix-wordhtmlgenerator-word-node')
   if (wordNodes.length > 0) {
     const t = Array.from(wordNodes).map(w => w.textContent).join('').trim()
     if (t.length > 5) return t
   }
-
-  // 3. Paragraph containers
   const paras = document.querySelectorAll('[class*="kix-paragraph"]')
   if (paras.length > 0) {
     const t = Array.from(paras).map(p => p.textContent).join('\n').trim()
     if (t.length > 5) return t
   }
-
-  // 4. The whole editor surface (broad but reliable if above fail)
   const editor = document.querySelector('.kix-appview-editor, .docs-editor-container')
   if (editor) {
     const t = editor.innerText?.trim()
     if (t && t.length > 5) return t
   }
-
-  // 5. Iframe fallback
   try {
     const iframe = document.querySelector('.docs-texteventtarget-iframe')
     const t = iframe?.contentDocument?.body?.innerText?.trim()
     if (t && t.length > 5) return t
-  } catch { /* cross-origin guard */ }
-
+  } catch {}
   return null
 }
 
@@ -128,91 +89,43 @@ function callBg(msg) {
 
 // ── Category helper ───────────────────────────────────────────────────────────
 function getCategory(word, suggestion) {
-  const norm = s => s.toLowerCase().replace(/['‘’ʻʼ]/g, "'")
+  const norm = s => s.toLowerCase().replace(/['''ʻʼ]/g, "'")
   const w = norm(word), s = norm(suggestion)
   if (w.replace(/'/g, '') === s.replace(/'/g, '')) return 'Apostrof belgisi'
   if (Math.abs(w.length - s.length) > 3) return "To'liqsiz so'z"
   return 'Imlo xatosi'
 }
 
-// ── Core check function ───────────────────────────────────────────────────────
-async function runCheck(text) {
-  if (!text || text.length < 3) return
-
-  if (!isLikelyUzbek(text)) {
-    if (sidebarEl && document.body.contains(sidebarEl)) {
-      const body = sidebarEl.querySelector('.uz-docs-body')
-      if (body) {
-        body.innerHTML = ''
-        const msg = document.createElement('div')
-        msg.className   = 'uz-docs-lang-notice'
-        msg.textContent = "O'zbek matni aniqlanmadi. Kirill yozuvini lotin yozuviga o'tkazing yoki o'zbek matni kiriting."
-        body.appendChild(msg)
-      }
-    }
-    return
-  }
-
-  showLoadingSidebar()
-
-  try {
-    const res = await callBg({ type: 'CHECK_TEXT', text })
-    ignoredKeys = new Set()
-    renderSidebar(res.errors ?? [], res.total_words ?? 0)
-  } catch (err) {
-    console.debug('[OʻzTekshiruv] check failed:', err.message)
-    showErrorSidebar(err.message)
-  }
+// ── Sidebar open / close / FAB ────────────────────────────────────────────────
+function ensureFab() {
+  if (fabEl && document.body.contains(fabEl)) return fabEl
+  fabEl = document.createElement('button')
+  fabEl.id        = 'uz-docs-fab'
+  fabEl.innerHTML = "<span>O'z</span>"
+  fabEl.title     = "OʻzTekshiruv — ochish"
+  fabEl.onclick   = openSidebar
+  document.body.appendChild(fabEl)
+  return fabEl
 }
 
-// ── Sidebar builders ──────────────────────────────────────────────────────────
-function getOrCreateSidebar() {
-  if (sidebarEl && document.body.contains(sidebarEl)) return sidebarEl
-  sidebarEl = document.createElement('div')
-  sidebarEl.id = 'uz-docs-sidebar'
-  document.body.appendChild(sidebarEl)
-  return sidebarEl
-}
-
-function showLoadingSidebar() {
-  const sidebar = getOrCreateSidebar()
-  sidebar.innerHTML = `
-    <div class="uz-docs-header">
-      <div class="uz-docs-title-row">
-        <span class="uz-docs-title"><b>O'z</b>Tekshiruv</span>
-        <button class="uz-docs-close" title="Yopish">✕</button>
-      </div>
-    </div>
-    <div class="uz-docs-body">
-      <div class="uz-docs-loading">
-        <span class="uz-docs-spinner"></span>
-        <span>Tekshirilmoqda…</span>
-      </div>
-    </div>
-  `
-  sidebar.querySelector('.uz-docs-close').onclick = () => {
-    sidebarEl.remove()
+function openSidebar() {
+  if (!sidebarEl || !document.body.contains(sidebarEl)) {
+    // Sidebar was removed (e.g. page navigation) — re-create
     sidebarEl = null
+    showLoadingSidebar()
+  } else {
+    sidebarEl.classList.remove('uz-docs-hidden')
   }
+  ensureFab().style.display = 'none'
 }
 
-function showErrorSidebar(msg) {
-  const sidebar = getOrCreateSidebar()
-  const body = sidebar.querySelector('.uz-docs-body')
-  if (body) {
-    body.innerHTML = `<div class="uz-docs-lang-notice">❌ Xato: ${msg}</div>`
-  }
+function closeSidebar() {
+  if (sidebarEl) sidebarEl.classList.add('uz-docs-hidden')
+  ensureFab().style.display = 'flex'
 }
 
-function renderSidebar(errors, totalWords) {
-  lastErrors = errors
-  lastTotal  = totalWords
-
-  const visible = errors.filter((e, i) => !ignoredKeys.has(`${e.word}:${i}`))
-  const sidebar  = getOrCreateSidebar()
-  sidebar.innerHTML = ''
-
-  // ── Header ──
+// ── Sidebar HTML builders ─────────────────────────────────────────────────────
+function buildHeader(errorCount, totalWords) {
   const header = document.createElement('div')
   header.className = 'uz-docs-header'
 
@@ -224,10 +137,10 @@ function renderSidebar(errors, totalWords) {
   title.innerHTML = "<b>O'z</b>Tekshiruv"
   titleRow.appendChild(title)
 
-  if (visible.length > 0) {
+  if (errorCount > 0) {
     const badge = document.createElement('span')
     badge.className   = 'uz-docs-badge'
-    badge.textContent = visible.length
+    badge.textContent = errorCount
     titleRow.appendChild(badge)
   }
 
@@ -235,29 +148,77 @@ function renderSidebar(errors, totalWords) {
   closeBtn.className   = 'uz-docs-close'
   closeBtn.textContent = '✕'
   closeBtn.title       = 'Yopish'
-  closeBtn.onclick     = () => { sidebarEl.remove(); sidebarEl = null }
+  closeBtn.onclick     = closeSidebar
   titleRow.appendChild(closeBtn)
   header.appendChild(titleRow)
 
-  const stats = document.createElement('div')
-  stats.className = 'uz-docs-stats'
-  const errClass = visible.length > 0 ? 'uz-docs-stat-err' : ''
-  stats.innerHTML = `<span>${totalWords} so'z</span><span class="${errClass}">${visible.length} xato</span>`
-  header.appendChild(stats)
+  if (totalWords !== null) {
+    const stats = document.createElement('div')
+    stats.className = 'uz-docs-stats'
+    const errClass = errorCount > 0 ? 'uz-docs-stat-err' : ''
+    stats.innerHTML = `<span>${totalWords} so'z</span><span class="${errClass}">${errorCount} xato</span>`
+    header.appendChild(stats)
+  }
+
+  return header
+}
+
+function getSidebar() {
+  if (!sidebarEl || !document.body.contains(sidebarEl)) {
+    sidebarEl = document.createElement('div')
+    sidebarEl.id = 'uz-docs-sidebar'
+    document.body.appendChild(sidebarEl)
+  }
+  return sidebarEl
+}
+
+function showLoadingSidebar() {
+  const sidebar = getSidebar()
+  sidebar.classList.remove('uz-docs-hidden')
+  sidebar.innerHTML = ''
+  sidebar.appendChild(buildHeader(0, null))
+
+  const body = document.createElement('div')
+  body.className = 'uz-docs-body'
+  body.innerHTML = `<div class="uz-docs-loading"><span class="uz-docs-spinner"></span><span>Tekshirilmoqda…</span></div>`
+  sidebar.appendChild(body)
+
+  ensureFab().style.display = 'none'
+}
+
+function showNotUzbekSidebar() {
+  const sidebar = getSidebar()
+  sidebar.classList.remove('uz-docs-hidden')
+  sidebar.innerHTML = ''
+  sidebar.appendChild(buildHeader(0, null))
+
+  const body = document.createElement('div')
+  body.className = 'uz-docs-body'
+  body.innerHTML = `<div class="uz-docs-lang-notice">O'zbek matni aniqlanmadi.<br>Lotin yozuvida o'zbek matni kiriting.</div>`
+  sidebar.appendChild(body)
+}
+
+function renderSidebar(errors, totalWords) {
+  lastErrors = errors
+  lastTotal  = totalWords
+
+  const visible = errors.filter((e, i) => !ignoredKeys.has(`${e.word}:${i}`))
+  const sidebar  = getSidebar()
+  sidebar.classList.remove('uz-docs-hidden')
+  sidebar.innerHTML = ''
+
+  sidebar.appendChild(buildHeader(visible.length, totalWords))
+
+  const body = document.createElement('div')
+  body.className = 'uz-docs-body'
 
   if (visible.length > 0) {
     const acceptAll = document.createElement('button')
     acceptAll.className   = 'uz-docs-accept-all'
     acceptAll.textContent = '✓ Barchasini qabul qilish'
     acceptAll.onclick     = () => applySequential([...visible].reverse(), 0)
-    header.appendChild(acceptAll)
+    body.appendChild(acceptAll)
   }
-
-  sidebar.appendChild(header)
-
-  // ── Body ──
-  const body = document.createElement('div')
-  body.className = 'uz-docs-body'
 
   if (visible.length === 0) {
     const ok = document.createElement('div')
@@ -323,6 +284,7 @@ function renderSidebar(errors, totalWords) {
   }
 
   sidebar.appendChild(body)
+  ensureFab().style.display = 'none'
 }
 
 // ── Apply correction via Find & Replace ──────────────────────────────────────
@@ -358,28 +320,55 @@ function applySequential(list, idx) {
   setTimeout(() => applySequential(list, idx + 1), 800)
 }
 
-// ── Auto-trigger on page load ─────────────────────────────────────────────────
+// ── Core check ────────────────────────────────────────────────────────────────
+async function runCheck(text) {
+  if (!text || text.length < 3) return
+
+  if (!isLikelyUzbek(text)) {
+    showNotUzbekSidebar()
+    return
+  }
+
+  showLoadingSidebar()
+  try {
+    const res = await callBg({ type: 'CHECK_TEXT', text })
+    ignoredKeys = new Set()
+    renderSidebar(res.errors ?? [], res.total_words ?? 0)
+  } catch (err) {
+    const body = getSidebar().querySelector('.uz-docs-body')
+    if (body) body.innerHTML = `<div class="uz-docs-lang-notice">❌ API xatosi: ${err.message}</div>`
+  }
+}
+
+// ── Auto-trigger ──────────────────────────────────────────────────────────────
 function tryAutoCheck() {
   if (autoCheckDone) return
   const text = readDocsText()
   if (!text || text.length < 10) return
   autoCheckDone = true
-  clearInterval(pollTimer)   // stop polling once we have text
+  clearInterval(pollTimer)
   runCheck(text)
 }
 
-// Poll every 300ms until text appears (handles async Docs loader)
+// ── Boot: show sidebar immediately, then find text ────────────────────────────
+showLoadingSidebar()           // ← sidebar visible from the very first frame
+ensureFab()                    // ← FAB exists but hidden (sidebar is open)
+
+// Poll until document text is available
 pollTimer = setInterval(tryAutoCheck, 300)
+setTimeout(() => {
+  clearInterval(pollTimer)
+  if (!autoCheckDone) {
+    // 15s passed, still no text — show idle state
+    const body = getSidebar().querySelector('.uz-docs-body')
+    if (body) body.innerHTML = `<div class="uz-docs-lang-notice">Matn topilmadi.<br>Tekshirmoqchi bo'lsangiz, quyidagi tugmani bosing yoki matn yozing.</div>`
+  }
+}, 15000)
 
-// Stop polling after 30s regardless (tab may have no text)
-setTimeout(() => clearInterval(pollTimer), 30000)
+new MutationObserver(() => { if (!autoCheckDone) tryAutoCheck() })
+  .observe(document.body, { childList: true, subtree: true })
 
-// MutationObserver as additional trigger
-new MutationObserver(() => {
-  if (!autoCheckDone) tryAutoCheck()
-}).observe(document.body, { childList: true, subtree: true })
-
-// ── Keyup listener (handles edits after initial load) ────────────────────────
+// ── Keyup: re-check on edit ───────────────────────────────────────────────────
 document.addEventListener('keyup', () => {
   clearTimeout(debounceTimer)
   debounceTimer = setTimeout(() => {
@@ -387,21 +376,26 @@ document.addEventListener('keyup', () => {
     if (!text || text.length < 3) return
     autoCheckDone = true
     clearInterval(pollTimer)
+    ignoredKeys = new Set()
     runCheck(text)
   }, DEBOUNCE_MS)
 }, true)
 
-// ── Handle CHECK_NOW from popup "Hozir tekshirish" button ────────────────────
+// ── Popup "Hozir tekshirish" button ──────────────────────────────────────────
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === 'CHECK_NOW') {
     autoCheckDone = false
+    openSidebar()
     const text = readDocsText()
     if (text && text.length > 5) {
       autoCheckDone = true
       runCheck(text)
       sendResponse({ ok: true })
     } else {
-      sendResponse({ ok: false, reason: 'No text found in document' })
+      showLoadingSidebar()
+      // re-start polling
+      pollTimer = setInterval(tryAutoCheck, 300)
+      sendResponse({ ok: false, reason: 'No text yet, polling started' })
     }
   }
   return false

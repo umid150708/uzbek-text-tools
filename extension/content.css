@@ -96,6 +96,47 @@
   flex-direction: column;
   font-family: system-ui, -apple-system, sans-serif;
   overflow: hidden;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+  transform: translateX(0);
+  opacity: 1;
+}
+
+/* Hidden state — slide out to the right */
+#uz-docs-sidebar.uz-docs-hidden {
+  transform: translateX(110%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ── Floating re-open tab ─────────────────────────────────────────────────────
+   Appears on the right edge when the sidebar is closed.                      */
+#uz-docs-fab {
+  position: fixed;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  background: #45a049;
+  color: #fff;
+  border: none;
+  border-radius: 8px 0 0 8px;
+  padding: 14px 6px;
+  cursor: pointer;
+  z-index: 2147483645;
+  display: none;          /* shown only when sidebar is hidden */
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  writing-mode: vertical-rl;
+  letter-spacing: 0.04em;
+  box-shadow: -2px 0 12px rgba(0,0,0,.15);
+  transition: background 0.15s, box-shadow 0.15s;
+}
+#uz-docs-fab:hover {
+  background: #2e7d32;
+  box-shadow: -4px 0 18px rgba(0,0,0,.22);
 }
 
 /* Header */
@@ -157,16 +198,19 @@
 .uz-docs-stat-err { color: #c0392b; font-weight: 600; }
 
 .uz-docs-accept-all {
-  align-self: flex-start;
-  padding: 5px 12px;
+  display: block;
+  width: 100%;
+  padding: 7px 12px;
+  margin-bottom: 10px;
   background: #45a049;
   color: #fff;
   font-size: 12px;
   font-weight: 600;
   border: none;
-  border-radius: 999px;
+  border-radius: 6px;
   cursor: pointer;
   font-family: inherit;
+  text-align: center;
   transition: background .15s;
 }
 .uz-docs-accept-all:hover { background: #2e7d32; }
