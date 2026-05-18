@@ -344,36 +344,78 @@ function renderSidebar(errors, totalWords) {
 }
 
 // ── Apply correction via Find & Replace ──────────────────────────────────────
+const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform)
+
 function applyCorrection(misspelled, suggestion) {
-  const editor = document.querySelector('.kix-appview-editor')
+  // Focus the document area — try several selectors
+  const editor =
+    document.querySelector('[role="textbox"]') ||
+    document.querySelector('.kix-appview-editor') ||
+    document.querySelector('[contenteditable="true"]')
   if (!editor) return
   editor.focus()
-  editor.dispatchEvent(new KeyboardEvent('keydown', {
-    key: 'h', keyCode: 72, ctrlKey: true, bubbles: true, cancelable: true,
-  }))
+
+  // Open Find & Replace: Ctrl+H (Windows/Linux) or Cmd+Shift+H (Mac in Docs)
+  const kbOpts = IS_MAC
+    ? { key: 'h', code: 'KeyH', keyCode: 72, metaKey: true, shiftKey: true, bubbles: true, cancelable: true }
+    : { key: 'h', code: 'KeyH', keyCode: 72, ctrlKey: true, bubbles: true, cancelable: true }
+  editor.dispatchEvent(new KeyboardEvent('keydown', kbOpts))
+
   setTimeout(() => {
+    // Find the search + replace input fields inside the dialog
     const inputs = document.querySelectorAll(
-      '.docs-findreplacebutton-container input, .modal-dialog input[type="text"]'
+      '.docs-findinput-input input, ' +
+      '.docs-replaceinput-input input, ' +
+      '.docs-findreplacebutton-container input, ' +
+      '.modal-dialog input[type="text"]'
     )
     if (inputs.length >= 2) {
-      inputs[0].value = misspelled
-      inputs[1].value = suggestion
-      inputs[0].dispatchEvent(new Event('input', { bubbles: true }))
-      inputs[1].dispatchEvent(new Event('input', { bubbles: true }))
+      setNativeValue(inputs[0], misspelled)
+      setNativeValue(inputs[1], suggestion)
       setTimeout(() => {
-        document.querySelector('[aria-label="Replace all"], .modal-dialog button:last-of-type')?.click()
+        // Click "Replace all"
+        const replaceAll =
+          document.querySelector('[aria-label="Replace all"]') ||
+          document.querySelector('[data-tooltip="Replace all"]') ||
+          document.querySelector('.docs-findreplacebutton-replaceall')
+        replaceAll?.click()
         setTimeout(() => {
-          document.querySelector('[aria-label="Close"], .modal-dialog .close-button')?.click()
+          // Close the dialog
+          const closeBtn =
+            document.querySelector('[aria-label="Close"]') ||
+            document.querySelector('.docs-findinput-close') ||
+            document.querySelector('.modal-dialog .close-button')
+          closeBtn?.click()
+          // Re-check text after correction
+          setTimeout(() => {
+            const text = readDocsText()
+            if (text) runCheck(text)
+          }, 500)
         }, 300)
       }, 200)
     }
-  }, 400)
+  }, 500)
+}
+
+/** Set value on a Google Docs input — native setter triggers their React-like bindings */
+function setNativeValue(input, value) {
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+  if (setter) setter.call(input, value)
+  else input.value = value
+  input.dispatchEvent(new Event('input', { bubbles: true }))
 }
 
 function applySequential(list, idx) {
-  if (idx >= list.length) return
+  if (idx >= list.length) {
+    // All corrections applied — re-check after a pause
+    setTimeout(() => {
+      const text = readDocsText()
+      if (text) runCheck(text)
+    }, 600)
+    return
+  }
   applyCorrection(list[idx].word, list[idx].suggestions[0])
-  setTimeout(() => applySequential(list, idx + 1), 800)
+  setTimeout(() => applySequential(list, idx + 1), 1200)
 }
 
 // ── Core check ────────────────────────────────────────────────────────────────
