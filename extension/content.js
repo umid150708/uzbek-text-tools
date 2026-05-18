@@ -85,7 +85,7 @@ function isLikelyUzbek(text) {
   // High 'q' density
   const sWords   = t.match(/\b[a-z]{2,}\b/g) || []
   const qCount   = sWords.filter(w => w.includes('q')).length
-  if (sWords.length >= 4 && qCount / sWords.length > 0.10) return true
+  if (sWords.length >= 4 && qCount / sWords.length > 0.15) return true
 
   // Uzbek digraph density (sh/ch only — "ng" triggers on English "-ing" endings)
   const digraphs = (t.match(/sh|ch/g) || []).length

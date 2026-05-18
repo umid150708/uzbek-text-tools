@@ -60,52 +60,79 @@ function buildSample(words, sections, perSection) {
 /**
  * Returns true when the text is likely Latin-script Uzbek.
  *
- * Sampling strategy (avoids scanning huge documents character-by-character):
- *   ≤ 40 words  → use all words
- *   41–300 words → 3 sections × 10 words = 30-word sample
- *   > 300 words  → 5 sections × 12 words = 60-word sample
- *
- * Detection runs on the sample, not the raw text.
+ * Two-pass approach:
+ *   1) Run heuristics on the FULL text (for short/medium docs ≤ 80 words)
+ *      or on a representative sample (for large docs).
+ *   2) Smart catch-all: if text is > 100 Latin chars with no Cyrillic
+ *      and no English articles/pronouns, it's almost certainly Uzbek.
  */
 function isLikelyUzbek(text) {
   if (!text) return false
   if (text.replace(/\s/g, '').length < 15) return true
   if (/[Ѐ-ӿ]/.test(text)) return false                      // Cyrillic — skip
 
+  const fullLower = text.toLowerCase()
+
+  // Apostrophe phonemes on FULL text — o' and g' are uniquely Uzbek
+  if (/[og]['‘’ʻʼʹ`´]/.test(fullLower)) {
+    console.log('[OzTekshiruv] detected: apostrophe phoneme (o\' or g\')')
+    return true
+  }
+
   // Apostrophe-aware word extraction (keeps o'/g' intact)
-  const allWords = text.match(/[a-zA-Z][a-zA-Z'''ʻʼʹ`´]*/g) || []
+  const allWords = text.match(/[a-zA-Z][a-zA-Z'‘’ʻʼʹ`´]*/g) || []
   if (allWords.length === 0) return false
 
-  const n      = allWords.length
-  const sample = n <= 40  ? allWords
-               : n <= 300 ? buildSample(allWords, 3, 10)   // medium text
-                           : buildSample(allWords, 5, 12)   // large text
+  const n = allWords.length
 
-  const t = sample.join(' ').toLowerCase()
+  // For short/medium texts: check ALL words. For large texts: sample.
+  const checkWords = n <= 80 ? allWords
+                   : n <= 300 ? buildSample(allWords, 3, 10)
+                               : buildSample(allWords, 5, 12)
 
-  // ── Checks on the sample ──────────────────────────────────────────────────
+  const t = checkWords.join(' ').toLowerCase()
 
-  // U+0027 ' | U+2018 ' | U+2019 ' | U+02BB ʻ | U+02BC ʼ | U+02B9 ʹ | ` | ´
-  if (/[og]['''ʻʼʹ`´]/.test(t)) return true
-
-  // High-frequency Uzbek function words (includes "edi" — very common past copula)
-  const FUNC = /\b(va|bu|bir|biz|siz|ular|men|sen|bor|ham|lekin|ammo|uchun|bilan|keyin|oldin|emas|chunki|hali|endi|nima|kim|qanday|qachon|shunday|bunday|agar|faqat|hech|juda|eng|edi|dedi|qildi|keldi|bordi|hamma|har|yana|garchi|shuning|boshladi|bo'ldi)\b/g
-  const hits = (t.match(FUNC) || []).length
-  if (hits >= 2) return true
-  if (hits >= 1 && n >= 3) return true   // even 1 Uzbek function word in 3+ word text → Uzbek
+  // High-frequency Uzbek function words
+  const FUNC = /\b(va|bu|bir|biz|siz|ular|men|sen|bor|ham|lekin|ammo|uchun|bilan|keyin|oldin|emas|chunki|hali|endi|nima|kim|qanday|qachon|shunday|bunday|agar|faqat|hech|juda|eng|edi|dedi|qildi|keldi|bordi|hamma|har|yana|garchi|shuning|boshladi)\b/g
+  const funcMatches = t.match(FUNC) || []
+  if (funcMatches.length >= 1) {
+    console.log('[OzTekshiruv] detected: FUNC words -', funcMatches)
+    return true
+  }
 
   // Uzbek agglutinative suffixes — extremely distinctive
-  if (/\w{3,}(lardan|larga|larida|larning|larini|larni|ishdi|ardi|imiz|ingiz)\b/.test(t)) return true
+  if (/\w{3,}(lardan|larga|larida|larning|larini|larni|ishdi|ardi|imiz|ingiz)\b/.test(t)) {
+    console.log('[OzTekshiruv] detected: agglutinative suffix')
+    return true
+  }
 
   // High 'q' density — rare in European languages, common in Uzbek Latin
   const sWords  = t.match(/\b[a-z]{2,}\b/g) || []
   const qCount  = sWords.filter(w => w.includes('q')).length
-  if (sWords.length >= 4 && qCount / sWords.length > 0.10) return true
+  if (sWords.length >= 4 && qCount / sWords.length > 0.15) {
+    console.log('[OzTekshiruv] detected: high q-density')
+    return true
+  }
 
-  // Uzbek digraph density (sh/ch only — "ng" is too common in English "-ing" endings)
+  // Uzbek digraph density (sh/ch only — "ng" fires on English "-ing")
   const digraphs = (t.match(/sh|ch/g) || []).length
-  if (sWords.length >= 4 && digraphs / sWords.length > 0.15) return true
+  if (sWords.length >= 4 && digraphs / sWords.length > 0.15) {
+    console.log('[OzTekshiruv] detected: high sh/ch density')
+    return true
+  }
 
+  // Smart catch-all: Latin text > 100 chars with NO common English words
+  // and no Cyrillic is almost certainly Uzbek (in a Google Doc context)
+  if (text.length > 100) {
+    const EN = /\b(the|is|are|was|were|have|has|had|this|that|with|from|they|their|them|would|could|should|about|which|where|there|these|those|what|when|been|being|will|your|than|some|into|each|also|very|most|not|but|for|you|all|can|her|his|how|its|may|our|own|say|she|too|use|way)\b/gi
+    const enHits = (text.match(EN) || []).length
+    if (enHits === 0) {
+      console.log('[OzTekshiruv] detected: catch-all (long Latin, no English words)')
+      return true
+    }
+  }
+
+  console.log('[OzTekshiruv] NOT detected as Uzbek.', { textLen: text.length, n, firstWords: allWords.slice(0, 10), funcMatches })
   return false
 }
 
@@ -127,28 +154,32 @@ function readDocsText() {
   const vw = window.innerWidth
   const vh = window.innerHeight
 
+  console.log('[OzTekshiruv] readDocsText() called, vw:', vw, 'vh:', vh)
+
   // ── Strategy 1: hit-test the document page ──
-  // Try several points across the centre of the viewport (handles scroll gaps
-  // between pages, different sidebar widths, etc.)
   const probePoints = [
     [vw * 0.35, vh * 0.45],
     [vw * 0.35, vh * 0.65],
     [vw * 0.45, vh * 0.50],
     [vw * 0.30, vh * 0.35],
+    [vw * 0.25, vh * 0.55],
   ]
 
   for (const [x, y] of probePoints) {
     const hit = document.elementFromPoint(x, y)
     if (!hit || hit.closest(SKIP) || hit === document.body) continue
     const text = walkUpForText(hit, SKIP, vw)
-    if (text && text.length > 100) return text
+    if (text && text.length > 50) {
+      console.log('[OzTekshiruv] Strategy 1 hit at', Math.round(x), Math.round(y), '→', text.length, 'chars')
+      return text
+    }
   }
+  console.log('[OzTekshiruv] Strategy 1 failed')
 
   // ── Strategy 2: kix-* innerText scan ──
-  // innerText (not textContent) so CSS-hidden accessibility nodes are skipped.
-  // textContent was causing English words from hidden DOM nodes to leak through.
   try {
     const kixEls = document.querySelectorAll('[class*="kix-"]')
+    console.log('[OzTekshiruv] Strategy 2: found', kixEls.length, 'kix-* elements')
     if (kixEls.length) {
       let best = ''
       for (const el of kixEls) {
@@ -156,9 +187,13 @@ function readDocsText() {
         const t = el.innerText?.trim()
         if (t && t.length > best.length) best = t
       }
-      if (best.length > 50) return best
+      if (best.length > 30) {
+        console.log('[OzTekshiruv] Strategy 2 →', best.length, 'chars:', JSON.stringify(best.substring(0, 80)))
+        return best
+      }
     }
   } catch {}
+  console.log('[OzTekshiruv] Strategy 2 failed')
 
   // ── Strategy 3: known Google Docs class selectors ──
   const SELECTORS = [
@@ -170,21 +205,27 @@ function readDocsText() {
       const els = document.querySelectorAll(sel)
       if (!els.length) continue
       const t = Array.from(els).map(e => e.innerText?.trim()).filter(Boolean).join('\n').trim()
-      if (t && t.length > 50) return t
+      if (t && t.length > 30) {
+        console.log('[OzTekshiruv] Strategy 3 (' + sel + ') →', t.length, 'chars')
+        return t
+      }
     } catch {}
   }
+  console.log('[OzTekshiruv] Strategy 3 failed')
 
   // ── Strategy 4: ARIA roles ──
   for (const sel of ['[role="main"]', '[role="document"]', '[role="region"]']) {
     const el = document.querySelector(sel)
     if (!el || el.closest(SKIP)) continue
     const t = el.innerText?.trim()
-    if (t && t.length > 50) return t
+    if (t && t.length > 30) {
+      console.log('[OzTekshiruv] Strategy 4 (' + sel + ') →', t.length, 'chars')
+      return t
+    }
   }
+  console.log('[OzTekshiruv] Strategy 4 failed')
 
   // ── Strategy 5: vertical column scan ──
-  // Accumulates innerText fragments from many y-positions. innerText only —
-  // no textContent fallback so hidden nodes never pollute the result.
   try {
     const seen  = new Set()
     const parts = []
@@ -203,10 +244,29 @@ function readDocsText() {
     }
     if (parts.length > 0) {
       const combined = parts.join(' ')
-      if (combined.length > 50) return combined
+      if (combined.length > 30) {
+        console.log('[OzTekshiruv] Strategy 5 →', combined.length, 'chars from', parts.length, 'fragments')
+        return combined
+      }
+    }
+  } catch {}
+  console.log('[OzTekshiruv] Strategy 5 failed')
+
+  // ── Strategy 6: brute-force scan of ALL divs in the document area ──
+  try {
+    const docArea = document.querySelector('.kix-appview-editor') ||
+                    document.querySelector('[role="main"]') ||
+                    document.querySelector('.docs-editor-container')
+    if (docArea) {
+      const t = docArea.innerText?.trim()
+      if (t && t.length > 20) {
+        console.log('[OzTekshiruv] Strategy 6 (brute-force) →', t.length, 'chars')
+        return t
+      }
     }
   } catch {}
 
+  console.log('[OzTekshiruv] ALL strategies failed — no text found')
   return null
 }
 
@@ -576,13 +636,15 @@ async function runCheck(text) {
 function tryAutoCheck() {
   if (autoCheckDone) return
   const text = readDocsText()
-  if (!text || text.length < 40) return
+  if (!text || text.length < 15) return
+  console.log('[OzTekshiruv] tryAutoCheck: got', text.length, 'chars, running check')
   autoCheckDone = true
   clearInterval(pollTimer)
   runCheck(text)
 }
 
 // ── Boot: show sidebar immediately, then find text ────────────────────────────
+console.log('[OzTekshiruv] docs-content.js v2.2 loaded')
 showLoadingSidebar()           // ← sidebar visible from the very first frame
 ensureFab()                    // ← FAB exists but hidden (sidebar is open)
 
