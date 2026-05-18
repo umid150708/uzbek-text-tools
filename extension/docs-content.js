@@ -484,7 +484,7 @@ function buildHeader(errorCount, totalWords) {
 
   const title = document.createElement('span')
   title.className = 'uz-docs-title'
-  title.innerHTML = "<b>O'z</b>Tekshiruv <small style='color:#999;font-size:9px'>v2.4</small>"
+  title.innerHTML = "<b>O'z</b>Tekshiruv <small style='color:#999;font-size:9px'>v2.5</small>"
   titleRow.appendChild(title)
 
   if (errorCount > 0) {
@@ -780,18 +780,34 @@ async function runCheck(text) {
 }
 
 // ── Auto-trigger ──────────────────────────────────────────────────────────────
-function tryAutoCheck() {
+async function tryAutoCheck() {
   if (autoCheckDone) return
+
+  // Primary: background script injects into page context (bypasses CSP)
+  try {
+    const res = await callBg({ type: 'EXTRACT_DOCS_TEXT' })
+    console.log('[OzTekshiruv] BG extraction:', res.source, '→', (res.text || '').length, 'chars, diag:', JSON.stringify(res.diag))
+    if (res.text && res.text.trim().length > 15) {
+      autoCheckDone = true
+      clearInterval(pollTimer)
+      runCheck(res.text)
+      return
+    }
+  } catch (e) {
+    console.log('[OzTekshiruv] BG extraction failed:', e.message)
+  }
+
+  // Fallback: content-script DOM extraction
   const text = readDocsText()
   if (!text || text.length < 15) return
-  console.log('[OzTekshiruv] tryAutoCheck: got', text.length, 'chars, running check')
+  console.log('[OzTekshiruv] tryAutoCheck fallback:', text.length, 'chars')
   autoCheckDone = true
   clearInterval(pollTimer)
   runCheck(text)
 }
 
 // ── Boot: show sidebar immediately, then find text ────────────────────────────
-console.log('[OzTekshiruv] docs-content.js v2.4 loaded')
+console.log('[OzTekshiruv] docs-content.js v2.5 loaded')
 showLoadingSidebar()           // ← sidebar visible from the very first frame
 ensureFab()                    // ← FAB exists but hidden (sidebar is open)
 
@@ -812,8 +828,14 @@ new MutationObserver(() => { if (!autoCheckDone) tryAutoCheck() })
 // ── Keyup: re-check on edit ───────────────────────────────────────────────────
 document.addEventListener('keyup', () => {
   clearTimeout(debounceTimer)
-  debounceTimer = setTimeout(() => {
-    const text = readDocsText()
+  debounceTimer = setTimeout(async () => {
+    // Try background extraction first, fall back to DOM
+    let text = null
+    try {
+      const res = await callBg({ type: 'EXTRACT_DOCS_TEXT' })
+      if (res.text && res.text.trim().length > 3) text = res.text
+    } catch {}
+    if (!text) text = readDocsText()
     if (!text || text.length < 3) return
     autoCheckDone = true
     clearInterval(pollTimer)
@@ -827,17 +849,24 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === 'CHECK_NOW') {
     autoCheckDone = false
     openSidebar()
-    const text = readDocsText()
-    if (text && text.length > 5) {
-      autoCheckDone = true
-      runCheck(text)
-      sendResponse({ ok: true })
-    } else {
-      showLoadingSidebar()
-      // re-start polling
-      pollTimer = setInterval(tryAutoCheck, 300)
-      sendResponse({ ok: false, reason: 'No text yet, polling started' })
-    }
+    ;(async () => {
+      let text = null
+      try {
+        const res = await callBg({ type: 'EXTRACT_DOCS_TEXT' })
+        if (res.text && res.text.trim().length > 5) text = res.text
+      } catch {}
+      if (!text) text = readDocsText()
+      if (text && text.length > 5) {
+        autoCheckDone = true
+        runCheck(text)
+        sendResponse({ ok: true })
+      } else {
+        showLoadingSidebar()
+        pollTimer = setInterval(tryAutoCheck, 300)
+        sendResponse({ ok: false, reason: 'No text yet, polling started' })
+      }
+    })()
+    return true  // async response
   }
   return false
 })
