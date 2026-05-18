@@ -50,77 +50,86 @@ function isLikelyUzbek(text) {
 /**
  * Extracts document text from Google Docs.
  *
- * Google periodically renames internal CSS classes (kix-lineview-text-block,
- * kix-wordhtmlgenerator-word-node, etc.), breaking class-based selectors.
+ * KEY INSIGHT: Google Docs renders the visible document in plain div elements
+ * (NOT in contenteditable).  The contenteditable is a tiny hidden input handler.
+ * Class names (.kix-*) change between Docs versions.
  *
- * This version prioritises ATTRIBUTE-BASED selectors that depend on HTML
- * standards (contenteditable, role, aria-*) rather than on Googleʼs internal
- * class naming — making it survive across Docs versions.
+ * STRATEGY: Hit-test the centre of the viewport to land on the document page,
+ * then walk up the DOM until we reach a layout-level container.  The deepest
+ * ancestor that still has > 50 chars of innerText is the page content area.
+ * This works regardless of class naming because it follows the visual layout.
  */
 function readDocsText() {
-  // ── Strategy 1: contenteditable surfaces (most robust) ──
-  // The Docs editor MUST have contenteditable="true" for the user to type.
-  // Pick the largest one (skip tiny toolbar widgets).
-  const editables = document.querySelectorAll('[contenteditable="true"]')
-  let bestText = ''
-  for (const el of editables) {
-    const rect = el.getBoundingClientRect()
-    if (rect.width < 200 || rect.height < 100) continue      // too small
-    const t = el.innerText?.trim()
-    if (t && t.length > bestText.length) bestText = t
-  }
-  if (bestText.length > 10) return bestText
+  const SKIP = '#uz-docs-sidebar, #uz-docs-fab'
+  const vw = window.innerWidth
+  const vh = window.innerHeight
 
-  // ── Strategy 2: ARIA textbox role ──
-  const textboxes = document.querySelectorAll('[role="textbox"]')
-  for (const el of textboxes) {
-    const t = el.innerText?.trim()
-    if (t && t.length > 10) return t
-  }
-
-  // ── Strategy 3: known Google Docs class names (may break across versions) ──
-  const CLASS_SELECTORS = [
-    '.kix-lineview-text-block',
-    '.kix-wordhtmlgenerator-word-node',
-    '[class*="kix-lineview"]',
-    '[class*="kix-paragraph"]',
-    '.kix-appview-editor',
-    '.kix-page',
-    '.docs-editor-container',
+  // ── Strategy 1: hit-test the document page ──
+  // Try several points across the centre of the viewport (handles scroll gaps
+  // between pages, different sidebar widths, etc.)
+  const probePoints = [
+    [vw * 0.35, vh * 0.45],
+    [vw * 0.35, vh * 0.65],
+    [vw * 0.45, vh * 0.50],
+    [vw * 0.30, vh * 0.35],
   ]
-  for (const sel of CLASS_SELECTORS) {
+
+  for (const [x, y] of probePoints) {
+    const hit = document.elementFromPoint(x, y)
+    if (!hit || hit.closest(SKIP) || hit === document.body) continue
+    const text = walkUpForText(hit, SKIP, vw)
+    if (text && text.length > 50) return text
+  }
+
+  // ── Strategy 2: known Google Docs class selectors (legacy fallback) ──
+  const SELECTORS = [
+    '.kix-appview-editor', '.kix-page', '.kix-lineview-text-block',
+    '[class*="kix-paragraph"]', '.docs-editor-container',
+  ]
+  for (const sel of SELECTORS) {
     try {
       const els = document.querySelectorAll(sel)
-      if (els.length === 0) continue
-      if (els.length === 1) {
-        const t = els[0].innerText?.trim()
-        if (t && t.length > 10) return t
-      } else {
-        const t = Array.from(els).map(el => el.textContent).join('\n').trim()
-        if (t.length > 10) return t
-      }
-    } catch { /* invalid selector guard */ }
+      if (!els.length) continue
+      const t = (els.length === 1)
+        ? els[0].innerText?.trim()
+        : Array.from(els).map(e => e.textContent).join('\n').trim()
+      if (t && t.length > 50) return t
+    } catch {}
   }
 
-  // ── Strategy 4: any element whose class contains "editor" ──
-  const editorEls = document.querySelectorAll('[class*="editor"]')
-  for (const el of editorEls) {
-    const rect = el.getBoundingClientRect()
-    if (rect.width < 300 || rect.height < 200) continue
+  // ── Strategy 3: ARIA roles ──
+  for (const sel of ['[role="main"]', '[role="document"]', '[role="textbox"]']) {
+    const el = document.querySelector(sel)
+    if (!el || el.closest(SKIP)) continue
     const t = el.innerText?.trim()
-    if (t && t.length > 10) return t
+    if (t && t.length > 50) return t
   }
-
-  // ── Strategy 5: iframe fallback ──
-  try {
-    const iframes = document.querySelectorAll('iframe')
-    for (const iframe of iframes) {
-      const t = iframe.contentDocument?.body?.innerText?.trim()
-      if (t && t.length > 10) return t
-    }
-  } catch {}
 
   return null
+}
+
+/** Walk up from `startEl`, collecting the deepest element whose innerText is
+ *  substantial.  Stop when we reach a layout-level container (wider than 80%
+ *  of viewport) — past that point, innerText includes toolbar/sidebar junk. */
+function walkUpForText(startEl, skip, vw) {
+  let el = startEl
+  let best = null
+
+  while (el && el !== document.body && el !== document.documentElement) {
+    if (el.closest(skip)) { el = el.parentElement; continue }
+
+    const rect = el.getBoundingClientRect()
+    const t = el.innerText?.trim()
+
+    if (t && t.length > 50) best = t
+
+    // Once the element is as wide as most of the viewport we've exited
+    // the page area and entered a full-width layout container — stop.
+    if (rect.width > vw * 0.85 && best) break
+
+    el = el.parentElement
+  }
+  return best
 }
 
 // ── Background relay ──────────────────────────────────────────────────────────
