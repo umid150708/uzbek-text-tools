@@ -180,102 +180,115 @@ function readDocsText() {
     return uiCount / words.length < 0.5
   }
 
-  // ── Strategy 0: page-context script with multiple extraction methods ──
-  // Injected script runs in PAGE world where Google Docs' JS model lives.
-  try {
-    const id = 'uz-extracted-' + Date.now()
-    const script = document.createElement('script')
-    script.textContent = `(function(){
-      try {
-        var results = {};
-        // Method A: aria-label attributes in editor area (accessibility text)
-        var ariaEls = document.querySelectorAll('.kix-appview-editor [aria-label]');
-        if (ariaEls.length) {
-          var labels = [];
-          for (var i = 0; i < ariaEls.length; i++) {
-            var lbl = ariaEls[i].getAttribute('aria-label');
-            if (lbl && lbl.length > 1) labels.push(lbl);
-          }
-          if (labels.length) results.ariaLabels = labels.join(' ');
-        }
+  // ── Strategy 0: collect text from multiple DOM sources, pick best ──
+  // Content scripts share the DOM with the page (but not JS variables).
+  // Google Docs canvas mode hides text in accessibility spans — textContent
+  // reads them even when innerText returns empty.
+  {
+    const results = {}
 
-        // Method B: textContent on kix-page elements (hidden accessibility spans)
-        var pages = document.querySelectorAll('.kix-page, .kix-page-content-wrapper, [data-page-index]');
-        if (pages.length) {
-          var pt = '';
-          for (var i = 0; i < pages.length; i++) pt += ' ' + (pages[i].textContent || '');
-          results.pageText = pt.trim();
-        }
-
-        // Method C: innerText from editor selectors (works in non-canvas mode)
-        var sels = ['.kix-appview-editor', '.kix-page', '[role="textbox"]', '[role="main"]'];
-        for (var i = 0; i < sels.length; i++) {
-          var el = document.querySelector(sels[i]);
-          if (el) {
-            var s = (el.innerText || '').trim();
-            if (s.length > 20) { results.innerText = s; break; }
-          }
-        }
-
-        // Method D: TreeWalker for text nodes inside editor
-        var editor = document.querySelector('.kix-appview-editor') ||
-                     document.querySelector('[role="main"]');
-        if (editor) {
-          var walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
-          var parts = [], seen = {};
-          var node;
-          while ((node = walker.nextNode())) {
-            var t = (node.textContent || '').trim();
-            if (t.length > 1 && !seen[t]) { seen[t] = 1; parts.push(t); }
-          }
-          if (parts.length) results.treeWalker = parts.join(' ');
-        }
-
-        // Method E: body textContent as last resort
-        results.bodyText = (document.body.textContent || '').trim().substring(0, 5000);
-
-        // Pick the best result: prefer aria labels, then page text, then innerText
-        var best = '';
-        var source = 'none';
-        var candidates = [
-          ['ariaLabels', results.ariaLabels],
-          ['pageText', results.pageText],
-          ['treeWalker', results.treeWalker],
-          ['innerText', results.innerText],
-          ['bodyText', results.bodyText]
-        ];
-        for (var i = 0; i < candidates.length; i++) {
-          var val = (candidates[i][1] || '').trim();
-          if (val.length > best.length) { best = val; source = candidates[i][0]; }
-        }
-
-        // Store diagnostic info
-        var diag = {};
-        for (var k in results) diag[k] = (results[k] || '').length;
-        diag.source = source;
-        diag.preview = best.substring(0, 200);
-        document.documentElement.setAttribute('${id}', JSON.stringify({text: best.substring(0, 10000), diag: diag}));
-      } catch(e) {
-        document.documentElement.setAttribute('${id}', JSON.stringify({text:'', diag:{error: e.message}}));
-      }
-    })()`;
-    document.documentElement.appendChild(script)
-    script.remove()
-    const raw = document.documentElement.getAttribute(id) || '{}'
-    document.documentElement.removeAttribute(id)
+    // Method A: aria-label attributes inside the editor
     try {
-      const parsed = JSON.parse(raw)
-      const text = cleanDocText(parsed.text || '')
-      console.log('[OzTekshiruv] Strategy 0 diag:', JSON.stringify(parsed.diag))
-      console.log('[OzTekshiruv] Strategy 0 cleaned text:', text.length, 'chars:', JSON.stringify(text.substring(0, 150)))
-      if (text && text.length > 20 && isDocContent(text)) {
-        console.log('[OzTekshiruv] Strategy 0 SUCCESS via', parsed.diag?.source)
-        return text
+      const editor = document.querySelector('.kix-appview-editor') ||
+                     document.querySelector('[role="main"]') ||
+                     document.querySelector('.docs-editor-container')
+      if (editor) {
+        const ariaEls = editor.querySelectorAll('[aria-label]')
+        const labels = []
+        for (const el of ariaEls) {
+          if (el.closest(SKIP)) continue
+          const lbl = el.getAttribute('aria-label')
+          if (lbl && lbl.length > 3) labels.push(lbl)
+        }
+        if (labels.length) results.ariaLabels = labels.join(' ')
       }
     } catch {}
-  } catch (e) { console.log('[OzTekshiruv] Strategy 0 error:', e.message) }
 
-  // ── Strategy 1: aria-label scan in content script world ──
+    // Method B: textContent on page containers (reads CSS-hidden accessibility text)
+    try {
+      for (const sel of ['.kix-page-content-wrapper', '.kix-page', '[data-page-index]']) {
+        const els = document.querySelectorAll(sel)
+        if (!els.length) continue
+        let combined = ''
+        for (const el of els) {
+          if (el.closest(SKIP)) continue
+          const t = el.textContent?.trim()
+          if (t) combined += (combined ? '\n' : '') + t
+        }
+        if (combined.length > 20) { results.pageText = combined; break }
+      }
+    } catch {}
+
+    // Method C: innerText from editor (works in non-canvas mode)
+    try {
+      for (const sel of ['.kix-appview-editor', '.kix-page', '[role="textbox"]', '[role="main"]']) {
+        const el = document.querySelector(sel)
+        if (!el || el.closest(SKIP)) continue
+        const t = el.innerText?.trim()
+        if (t && t.length > 20) { results.innerText = t; break }
+      }
+    } catch {}
+
+    // Method D: TreeWalker on editor subtree
+    try {
+      const root = document.querySelector('.kix-appview-editor') ||
+                   document.querySelector('[role="main"]') ||
+                   document.querySelector('.docs-editor-container')
+      if (root) {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+        const parts = [], seen = new Set()
+        let node
+        while ((node = walker.nextNode())) {
+          if (node.parentElement?.closest(SKIP)) continue
+          const t = node.textContent?.trim()
+          if (t && t.length > 1 && !seen.has(t)) { seen.add(t); parts.push(t) }
+        }
+        if (parts.length) results.treeWalker = parts.join(' ')
+      }
+    } catch {}
+
+    // Method E: textContent on role="document" or role="main"
+    try {
+      for (const sel of ['[role="document"]', '[role="main"]']) {
+        const el = document.querySelector(sel)
+        if (!el || el.closest(SKIP)) continue
+        const t = el.textContent?.trim()
+        if (t && t.length > 20) { results.roleText = t; break }
+      }
+    } catch {}
+
+    // Pick the best result — prefer narrower sources (less toolbar noise)
+    const candidates = [
+      results.ariaLabels,
+      results.pageText,
+      results.treeWalker,
+      results.innerText,
+      results.roleText,
+    ]
+    let best = '', bestIdx = -1
+    for (let i = 0; i < candidates.length; i++) {
+      const val = (candidates[i] || '').trim()
+      if (val.length > best.length) { best = val; bestIdx = i }
+    }
+
+    const sourceNames = ['ariaLabels', 'pageText', 'treeWalker', 'innerText', 'roleText']
+    const diag = {}
+    for (const k of sourceNames) diag[k] = (results[k] || '').length
+    console.log('[OzTekshiruv] Strategy 0 sources:', JSON.stringify(diag))
+
+    if (best.length > 20) {
+      const cleaned = cleanDocText(best)
+      console.log('[OzTekshiruv] Strategy 0 best:', sourceNames[bestIdx], '→', cleaned.length, 'chars:', JSON.stringify(cleaned.substring(0, 150)))
+      if (cleaned.length > 20 && isDocContent(cleaned)) return cleaned
+      // Even if isDocContent fails, if it's the only text we have, use it
+      if (cleaned.length > 20) {
+        console.log('[OzTekshiruv] Strategy 0: isDocContent=false but using anyway (only text available)')
+        return cleaned
+      }
+    }
+  }
+
+  // ── Strategy 1: aria-label scan (broader — outside editor too) ──
   try {
     const ariaEls = document.querySelectorAll('[aria-label]')
     const labels = []
